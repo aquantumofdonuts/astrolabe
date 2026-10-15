@@ -1,0 +1,60 @@
+# Dependencies
+node_modules/
+.pnp.*
+.yarn/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+vendor/
+
+# Build output
+dist/
+build/
+out/
+.next/
+.nuxt/
+.svelte-kit/
+coverage/
+*.tsbuildinfo
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Docker
+docker-compose.override.yml
+.docker/
+*.pid
+
+# Data volumes
+data/
+pgdata/
+*.sqlite
+*.sqlite3
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editors and OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Caches
+.cache/
+.eslintcache
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
