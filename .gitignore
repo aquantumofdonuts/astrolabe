@@ -17,6 +17,8 @@ out/
 .svelte-kit/
 coverage/
 *.tsbuildinfo
+test-results/
+playwright-report/
 
 # Environment and secrets
 .env

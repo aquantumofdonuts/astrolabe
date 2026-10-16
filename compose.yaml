@@ -1,0 +1,8 @@
+services:
+  astrolabe:
+    build: .
+    ports:
+      - '8080:80'
+    volumes:
+      - ./public/catalog.json:/usr/share/nginx/html/catalog.json:ro
+    restart: unless-stopped

@@ -1,0 +1,876 @@
+/* Application chrome. Keep typography, surfaces and interaction states shared across
+   the scene HUD, directory, search, inspector and authoring dialogs. Scene layout and
+   projection remain in observatory.css. Category colors identify content, not controls. */
+:root {
+  --ui-font: 'Manrope Variable', sans-serif;
+  --ui-bg: #060d14;
+  --ui-surface: #0a1721;
+  --ui-overlay: #09151ff5;
+  --ui-field: #060f18;
+  --ui-text: #e5eff3;
+  --ui-secondary: #bdcdd6;
+  --ui-muted: #93a9b7;
+  --ui-accent: #a8dce9;
+  --ui-hover: #a8dce910;
+  --ui-selected: #a8dce91a;
+  --ui-line: #a8dce927;
+  --ui-line-strong: #a8dce954;
+  --ui-radius: 2px;
+  --ui-shadow: 0 16px 48px #0007;
+  --bg: var(--ui-bg);
+  --panel: var(--ui-surface);
+  --panel-raised: var(--ui-surface);
+  --text: var(--ui-text);
+  --muted: var(--ui-muted);
+  --gold: var(--ui-accent);
+  --gold-dim: var(--ui-muted);
+  --line: var(--ui-line);
+  --line-strong: var(--ui-line-strong);
+  --accent: var(--ui-accent);
+  color-scheme: dark;
+  font-family: var(--ui-font);
+  color: var(--ui-text);
+  background: var(--ui-bg);
+  font-variant-numeric: tabular-nums;
+}
+.cinematic {
+  --gold: var(--ui-accent);
+  --text: var(--ui-text);
+  --muted: var(--ui-muted);
+  font-family: var(--ui-font);
+  font-size: 13px;
+  color: var(--ui-text);
+}
+.cinematic :is(button, input, select, textarea, h1, h2, h3, kbd) {
+  font-family: var(--ui-font);
+}
+::selection {
+  background: #a8dce938;
+  color: #fff;
+}
+.cinematic :is(button, a, input, select, textarea):focus-visible {
+  outline: 1px solid var(--ui-accent);
+  outline-offset: 3px;
+}
+.cinematic :is(button, a, input, select, textarea, kbd) {
+  border-radius: var(--ui-radius);
+}
+.cinematic :is(.modal, .search-popover, .inspector, .toast, .scene-controls) {
+  background: var(--ui-overlay);
+  color: var(--ui-text);
+  border: 1px solid var(--ui-line-strong);
+  border-radius: var(--ui-radius);
+  box-shadow: var(--ui-shadow);
+  backdrop-filter: blur(16px);
+}
+.cinematic :is(.modal, .search-popover, .inspector) {
+  border-top-color: var(--ui-accent);
+}
+.cinematic :is(.eyebrow, .category-label, .directory-select small, .form-section-title small) {
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.cinematic :is(.inspector h2, .modal-heading h2, .empty-state h3) {
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: 0.015em;
+  line-height: 1.35;
+  color: var(--ui-text);
+}
+.cinematic :is(.inspector-description, .mobile-details-content > p, .demo-hero p, .empty-state p) {
+  font-size: 13px;
+  line-height: 1.7;
+  letter-spacing: 0;
+  color: var(--ui-secondary);
+}
+.cinematic
+  :is(
+    .results-count,
+    .launch-note,
+    .search-popover-footer,
+    .form-help,
+    .studio-form label > small,
+    .modal-heading p,
+    .help-note,
+    .studio-reset > span
+  ) {
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.6;
+  letter-spacing: 0.015em;
+  color: var(--ui-muted);
+  text-transform: none;
+}
+.loading-screen .secondary-button,
+.cinematic
+  :is(
+    .primary-button,
+    .secondary-button,
+    .text-button,
+    .danger-button,
+    .launch-button,
+    .visit-button,
+    .directory-launch,
+    .add-instrument
+  ) {
+  min-height: 36px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  border-radius: var(--ui-radius);
+}
+.cinematic :is(.primary-button, .launch-button) {
+  color: #09151e;
+  background: var(--ui-accent);
+  border: 1px solid var(--ui-accent);
+  box-shadow: none;
+  font-weight: 600;
+  padding: 11px 16px;
+}
+.cinematic :is(.primary-button, .launch-button):hover:not(:disabled) {
+  background: #d3f2f9;
+  border-color: #d3f2f9;
+  color: #09151e;
+}
+.loading-screen .secondary-button,
+.cinematic :is(.secondary-button, .add-instrument) {
+  color: var(--ui-accent);
+  background: transparent;
+  border: 1px solid var(--ui-line-strong);
+}
+.loading-screen .secondary-button:hover,
+.cinematic :is(.secondary-button, .add-instrument):hover:not(:disabled) {
+  color: #fff;
+  background: var(--ui-hover);
+  border-color: var(--ui-accent);
+}
+.cinematic :is(.text-button, .visit-button, .directory-launch, .search-launch) {
+  color: var(--ui-accent);
+}
+.cinematic :is(.text-button, .visit-button, .directory-launch, .search-launch):hover {
+  color: #fff;
+  background: var(--ui-hover);
+}
+.cinematic :is(.icon-button, .favorite-button, .inspector-close, .clear-search) {
+  min-width: 32px;
+  min-height: 32px;
+  color: var(--ui-muted);
+  border-radius: var(--ui-radius);
+}
+.cinematic :is(.icon-button, .favorite-button, .inspector-close, .clear-search):hover {
+  color: var(--ui-text);
+  background: var(--ui-hover);
+  border-color: var(--ui-line);
+}
+.cinematic .favorite-button.is-favorite {
+  color: var(--ui-accent);
+  background: var(--ui-selected);
+}
+.cinematic .favorite-button.is-favorite svg {
+  fill: #a8dce928;
+}
+.cinematic kbd {
+  border: 1px solid var(--ui-line);
+  border-radius: var(--ui-radius);
+  background: var(--ui-hover);
+  font-size: 10px;
+  color: var(--ui-secondary);
+}
+/* Navigation uses the same restrained active marker as the authoring tabs. */
+.cinematic :is(.topbar, .sidebar) {
+  background: var(--ui-bg);
+  border-bottom: 1px solid var(--ui-line);
+}
+.cinematic .brand {
+  color: var(--ui-text);
+}
+.cinematic .brand-monogram {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin: 0;
+  color: var(--ui-accent);
+  border: 1px solid var(--ui-line-strong);
+  font-family: var(--ui-font);
+  font-size: 18px;
+  font-weight: 500;
+  font-style: normal;
+  line-height: 1;
+}
+.cinematic .brand > div {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.23em;
+}
+.cinematic .workspace-breadcrumb {
+  color: var(--ui-muted);
+  font-size: 11px;
+  opacity: 1;
+}
+.cinematic
+  :is(
+    .collection-nav button,
+    .category-nav button,
+    .studio-button,
+    .view-tabs > button,
+    .segmented > button
+  ) {
+  min-height: 34px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.075em;
+  text-transform: uppercase;
+  color: var(--ui-muted);
+}
+.cinematic :is(.collection-nav button, .category-nav button, .studio-button):hover {
+  color: var(--ui-text);
+  background: var(--ui-hover);
+}
+.cinematic .collection-nav button.active {
+  color: var(--ui-accent);
+}
+.cinematic .category-nav button.active {
+  color: var(--category-color);
+}
+.cinematic :is(.collection-nav button small, .category-nav button small) {
+  color: var(--ui-muted);
+  font-size: 9px;
+}
+.cinematic :is(.view-tabs, .segmented) {
+  background: var(--ui-field);
+  border: 1px solid var(--ui-line);
+  border-radius: var(--ui-radius);
+  padding: 0;
+  gap: 0;
+}
+.cinematic :is(.view-tabs > button, .segmented > button) {
+  padding: 9px 14px;
+  border-radius: 0;
+}
+.cinematic :is(.view-tabs > button, .segmented > button).active {
+  background: var(--ui-selected);
+  color: var(--ui-text);
+  box-shadow: inset 0 -1px var(--ui-accent);
+}
+.cinematic :is(.view-tabs > button, .segmented > button):hover:not(.active) {
+  background: var(--ui-hover);
+  color: var(--ui-text);
+}
+.cinematic .results-count button {
+  color: var(--ui-accent);
+  font-size: 10px;
+}
+.cinematic .quality-button {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--ui-secondary);
+}
+.cinematic .scene-canvas::after {
+  background: linear-gradient(0deg, #060d1450, transparent 12%, transparent 94%, #060d1430);
+}
+/* Search shares form fields and the selected-row language used in Catalog studio. */
+.cinematic :is(input, select, textarea) {
+  border: 1px solid var(--ui-line-strong);
+  background: var(--ui-field);
+  color: var(--ui-text);
+  border-radius: var(--ui-radius);
+  font-size: 13px;
+  line-height: 1.5;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.cinematic :is(input, textarea)::placeholder {
+  color: var(--ui-muted);
+  opacity: 0.85;
+}
+.cinematic .search-box {
+  height: 36px;
+  background: var(--ui-field);
+  border: 1px solid var(--ui-line-strong);
+}
+.cinematic .search-box:focus-within {
+  border-color: var(--ui-accent);
+  box-shadow: 0 0 0 1px #a8dce918;
+}
+.cinematic .search-box input {
+  border: 0;
+  font-size: 12px;
+  background: transparent;
+}
+.cinematic .search-popover {
+  top: calc(100% + 8px);
+}
+.cinematic .search-popover-heading {
+  padding: 14px 16px;
+  color: var(--ui-secondary);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+}
+.cinematic .search-popover-heading small {
+  color: var(--ui-muted);
+  font-size: 10px;
+  letter-spacing: 0;
+}
+.cinematic .search-result {
+  border: 0;
+  border-radius: 0;
+}
+.cinematic :is(.search-result.active, .studio-entry.active) {
+  color: var(--ui-text);
+  background: var(--ui-selected);
+  border-color: transparent;
+  box-shadow: inset 2px 0 var(--ui-accent);
+}
+.cinematic :is(.search-result, .studio-entry):hover {
+  background: var(--ui-hover);
+}
+.cinematic .search-result strong {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.025em;
+}
+.cinematic .search-result small {
+  color: var(--ui-muted);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.cinematic .search-popover-footer {
+  padding: 12px 16px;
+}
+/* Selected instrument: a compact extension of the in-world callout. */
+.cinematic .inspector {
+  right: 24px;
+  bottom: 78px;
+  width: 310px;
+  border-top-color: var(--accent, var(--ui-accent));
+  max-height: calc(100dvh - 220px);
+}
+.cinematic .inspector-inner {
+  padding: 20px;
+}
+.cinematic .inspector-heading {
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.cinematic .inspector-heading .eyebrow {
+  font-size: 10px;
+  color: var(--ui-muted);
+  letter-spacing: 0.12em;
+}
+.cinematic .inspector-close {
+  font-size: 11px;
+  gap: 6px;
+}
+.cinematic .category-label {
+  color: var(--accent);
+}
+.cinematic .inspector h2 {
+  margin-top: 8px;
+}
+.cinematic .inspector-description {
+  margin: 16px 0;
+}
+.cinematic .visit-button {
+  margin: 0 0 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--ui-line) !important;
+}
+.cinematic .launch-button {
+  margin-top: 0;
+}
+.cinematic .launch-note {
+  margin-top: 10px;
+  letter-spacing: 0.015em;
+}
+.cinematic .inspector-divider {
+  margin: 20px 0 0;
+  background: var(--ui-line);
+}
+.cinematic .inspector-section {
+  margin: 0;
+  padding-top: 16px;
+}
+.cinematic .tags {
+  gap: 6px;
+}
+.cinematic .tags button {
+  font-size: 11px;
+  color: var(--ui-secondary);
+  border: 1px solid var(--ui-line);
+  background: transparent;
+  padding: 6px 8px;
+}
+.cinematic .tags button:hover {
+  background: var(--ui-hover);
+  color: var(--ui-text);
+  border-color: var(--ui-line-strong);
+}
+/* Directory and shortcuts use the same compact names and category metadata. */
+.cinematic.catalog-view .directory-grid {
+  gap: 16px;
+}
+.cinematic.catalog-view .directory-card {
+  padding: 0;
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-line);
+  border-top-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  border-radius: var(--ui-radius);
+}
+.cinematic.catalog-view .directory-card:hover,
+.cinematic.catalog-view .directory-card.selected {
+  border-color: var(--accent);
+}
+.cinematic .directory-card-top {
+  padding: 16px 18px 0;
+}
+.cinematic .directory-select {
+  padding: 12px 18px 18px;
+}
+.cinematic.catalog-view .directory-card h2 {
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: 0.025em;
+  margin: 8px 0;
+}
+.cinematic.catalog-view .directory-card p {
+  font-size: 13px;
+  color: var(--ui-secondary);
+  line-height: 1.7;
+}
+.cinematic .directory-card-footer {
+  padding: 8px 18px;
+  border-top-color: var(--ui-line);
+}
+.cinematic .directory-card-footer > span {
+  color: var(--ui-muted);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+.cinematic .instrument-icon {
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+.cinematic .launchpad-heading h2 {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.cinematic .launchpad-heading > span {
+  font-size: 11px;
+  color: var(--ui-muted);
+}
+.cinematic .launchpad-card {
+  border: 1px solid var(--ui-line);
+  border-radius: var(--ui-radius);
+  background: var(--ui-surface);
+}
+.cinematic .launchpad-card:hover {
+  border-color: var(--accent);
+  background: var(--ui-hover);
+}
+.cinematic .launchpad-link {
+  padding: 16px;
+}
+.cinematic .launchpad-link strong {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.025em;
+  color: var(--ui-text);
+}
+.cinematic .launchpad-link div > span {
+  font-size: 10px;
+  color: var(--ui-muted);
+  letter-spacing: 0.04em;
+}
+.cinematic .launchpad-icon {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+.cinematic .empty-state {
+  color: var(--ui-muted);
+}
+/* Dialog headers, forms, notices and footer actions belong to the same HUD. */
+.cinematic .modal::backdrop {
+  background: #030910b8;
+  backdrop-filter: blur(6px);
+}
+.cinematic .modal-heading {
+  padding: 20px 24px;
+  background: var(--ui-overlay);
+  border-bottom: 1px solid var(--ui-line);
+}
+.cinematic .modal-heading p {
+  margin-top: 6px;
+}
+.cinematic .modal-heading .icon-button {
+  margin: 0;
+}
+.cinematic .studio-modal[open] {
+  display: flex;
+  flex-direction: column;
+  height: min(900px, calc(100dvh - 48px));
+  max-height: calc(100dvh - 48px);
+  overflow: auto;
+}
+.cinematic :is(.studio-toolbar, .studio-footer, .studio-notice, .modal-heading) {
+  flex-shrink: 0;
+}
+.cinematic .studio-body {
+  flex: 1;
+  height: auto;
+  min-height: 180px;
+  max-height: none;
+  grid-template-columns: 200px minmax(0, 1fr);
+}
+.cinematic :is(.studio-toolbar, .studio-footer) {
+  padding: 16px 24px;
+  border-color: var(--ui-line);
+}
+.cinematic .studio-footer {
+  background: var(--ui-field);
+}
+.cinematic .studio-list {
+  padding: 16px 12px;
+  border-color: var(--ui-line);
+}
+.cinematic .studio-form {
+  padding: 20px 24px;
+}
+.cinematic .studio-entry {
+  padding: 11px 10px;
+  font-size: 12px;
+  border-radius: 0;
+  color: var(--ui-secondary);
+}
+.cinematic .studio-entry small {
+  font-size: 9px;
+  color: var(--ui-muted);
+}
+.cinematic .add-instrument {
+  padding: 10px;
+  font-size: 10px;
+}
+.cinematic :is(.studio-form label, .studio-publish-info label) {
+  color: var(--ui-secondary);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+}
+.cinematic .form-section-title {
+  color: var(--ui-accent);
+  margin-bottom: 20px;
+}
+.cinematic .form-section-title h3 {
+  color: var(--ui-text);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.025em;
+}
+.cinematic .form-section-title small {
+  color: var(--ui-muted);
+  font-size: 10px;
+}
+.cinematic :is(.form-help, .studio-form label > small) {
+  letter-spacing: 0;
+}
+.cinematic .studio-form .checkbox-label {
+  font-size: 12px;
+  letter-spacing: 0;
+}
+.cinematic .color-field {
+  background: var(--ui-field);
+  border-color: var(--ui-line-strong);
+  border-radius: var(--ui-radius);
+}
+.cinematic .delete-row {
+  border-color: var(--ui-line);
+  font-size: 11px;
+  flex-wrap: wrap;
+}
+.cinematic .studio-reset {
+  margin-top: 12px;
+  gap: 6px 16px;
+}
+.cinematic .studio-reset .text-button {
+  font-size: 10px;
+  min-height: 28px;
+  color: var(--ui-muted);
+}
+.cinematic :is(.studio-notice, .local-preview-banner, .demo-badge) {
+  padding: 10px 16px;
+  background: var(--ui-hover);
+  border: 0;
+  border-bottom: 1px solid var(--ui-line);
+  border-radius: 0;
+  color: var(--ui-secondary);
+  font-size: 11px;
+  letter-spacing: 0.025em;
+}
+.cinematic .studio-notice {
+  padding-inline: 24px;
+  flex-wrap: wrap;
+}
+.cinematic .studio-notice > span:last-child {
+  color: var(--ui-muted);
+  font-size: 10px;
+}
+.cinematic .local-preview-banner button {
+  font-size: 10px;
+  color: var(--ui-accent);
+}
+.cinematic .node-image-editor {
+  border-color: var(--ui-line);
+}
+.cinematic .node-image-preview {
+  background: var(--ui-field);
+  border: 1px solid var(--ui-line);
+}
+.cinematic input[type='file'] {
+  font-size: 11px;
+  padding: 8px;
+}
+.cinematic input::file-selector-button {
+  font: inherit;
+  color: var(--ui-accent);
+  background: var(--ui-selected);
+  border: 1px solid var(--ui-line-strong);
+  border-radius: var(--ui-radius);
+  padding: 7px 9px;
+  margin-right: 10px;
+  cursor: pointer;
+}
+.cinematic :is(.form-error, .form-success) {
+  font-size: 12px;
+  border-radius: var(--ui-radius);
+  line-height: 1.6;
+}
+.cinematic .demo-content {
+  padding: 20px 24px 24px;
+}
+.cinematic .demo-badge {
+  justify-content: flex-start;
+}
+.cinematic .demo-hero {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  text-align: left;
+  padding: 24px 0;
+}
+.cinematic .demo-hero-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  flex-shrink: 0;
+}
+.cinematic .demo-hero p {
+  margin: 0;
+  max-width: none;
+}
+.cinematic .demo-ready {
+  padding: 16px 0;
+  background: transparent;
+  border-radius: 0;
+  border-block: 1px solid var(--ui-line);
+}
+.cinematic .demo-ready strong {
+  font-size: 13px;
+  color: var(--ui-text);
+  font-weight: 500;
+}
+.cinematic .demo-ready p {
+  font-size: 12px;
+  color: var(--ui-muted);
+  line-height: 1.6;
+}
+.cinematic .demo-footer {
+  margin-top: 20px;
+}
+.cinematic .shortcuts {
+  padding: 8px 24px 20px;
+}
+.cinematic .shortcuts > div {
+  font-size: 13px;
+  color: var(--ui-secondary);
+  border-color: var(--ui-line);
+}
+.cinematic .help-note {
+  padding: 0 24px 24px;
+}
+.cinematic .mobile-details-content {
+  padding: 20px 24px 24px;
+}
+.cinematic .mobile-details-content .launch-button {
+  margin-top: 20px;
+}
+.cinematic .toast {
+  padding: 12px 16px;
+  font-size: 12px;
+  color: var(--ui-secondary);
+}
+.cinematic .skip-link {
+  background: var(--ui-accent);
+  color: var(--ui-bg);
+  border-radius: var(--ui-radius);
+}
+.loading-screen p {
+  color: var(--ui-muted);
+  font-size: 13px;
+}
+@media (max-width: 760px) {
+  .cinematic
+    :is(
+      .modal-heading,
+      .studio-form,
+      .studio-footer,
+      .studio-toolbar,
+      .demo-content,
+      .mobile-details-content
+    ) {
+    padding: 16px;
+  }
+  .cinematic .modal {
+    width: calc(100% - 24px);
+    max-height: calc(100dvh - 24px);
+  }
+  .cinematic .studio-modal[open] {
+    height: calc(100dvh - 24px);
+    max-height: calc(100dvh - 24px);
+  }
+  .cinematic .studio-body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    min-height: 220px;
+  }
+  .cinematic .studio-list {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    padding: 10px 16px;
+    border-right: 0;
+    border-bottom: 1px solid var(--ui-line);
+  }
+  .cinematic :is(.studio-entry, .add-instrument) {
+    width: auto;
+    flex-shrink: 0;
+    white-space: nowrap;
+    margin: 0;
+    padding: 8px 10px;
+  }
+  .cinematic .studio-entry.active {
+    box-shadow: inset 0 -1px var(--ui-accent);
+  }
+  .cinematic .studio-form {
+    padding: 16px;
+  }
+  .cinematic .studio-notice {
+    padding: 10px 16px;
+    gap: 6px;
+  }
+  .cinematic .studio-notice > span:last-child {
+    margin-left: 0;
+  }
+  .cinematic .studio-toolbar {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .cinematic .studio-publish-info {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .cinematic .studio-publish-info label {
+    max-width: none;
+    flex: 1 1 160px;
+  }
+  .cinematic .studio-publish-info .primary-button {
+    flex: 1 1 160px;
+  }
+  .cinematic .studio-reset > span {
+    font-size: 10px;
+  }
+  .cinematic
+    :is(
+      .studio-form input,
+      .studio-form select,
+      .studio-form textarea,
+      .studio-publish-info input
+    ) {
+    font-size: 16px;
+  }
+  .cinematic .search-box input {
+    font-size: 16px;
+  }
+  .cinematic input[type='file'] {
+    font-size: 11px;
+  }
+  .cinematic .search-popover {
+    top: 119px;
+  }
+  .cinematic .search-popover-heading {
+    flex-wrap: wrap;
+  }
+  .cinematic.catalog-view .directory-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+  .cinematic.catalog-view .directory-card h2 {
+    font-size: 20px;
+  }
+  .cinematic .launchpad-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cinematic .demo-footer {
+    flex-wrap: wrap;
+  }
+  .cinematic .demo-footer > button {
+    flex: 1;
+  }
+  .cinematic .inspector {
+    right: 12px;
+    bottom: 72px;
+    width: min(310px, calc(100% - 24px));
+  }
+  .cinematic .toast {
+    bottom: 76px;
+    width: max-content;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cinematic *,
+  .cinematic *::before,
+  .cinematic *::after {
+    transition-duration: 0s !important;
+  }
+}
+
+/* A launch action occupies one control slot, not half of a search result row. */
+.cinematic .search-result > .search-launch {
+  flex: 0 0 36px;
+  min-height: 36px;
+  justify-content: center;
+  padding: 8px;
+  margin-right: 8px;
+}
+.cinematic .search-popover-heading > span {
+  text-transform: uppercase;
+}
+.cinematic .directory-heading .eyebrow {
+  color: var(--ui-muted);
+}
+.cinematic .studio-notice .tiny-dot {
+  background: var(--ui-accent);
+}

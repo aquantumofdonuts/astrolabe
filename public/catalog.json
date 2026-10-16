@@ -1,0 +1,220 @@
+{
+  "version": 1,
+  "title": "The observatory",
+  "categories": [
+    {
+      "id": "observe",
+      "name": "Observe",
+      "description": "Clarity across every system",
+      "color": "#7cd6df",
+      "icon": "radar"
+    },
+    {
+      "id": "automate",
+      "name": "Automate",
+      "description": "Put the repetitive on autopilot",
+      "color": "#edbb76",
+      "icon": "workflow"
+    },
+    {
+      "id": "configure",
+      "name": "Configure",
+      "description": "Bring order to your infrastructure",
+      "color": "#8bd1ad",
+      "icon": "network"
+    },
+    {
+      "id": "intelligence",
+      "name": "Intelligence",
+      "description": "A little knowledge. A little magic.",
+      "color": "#bca1f4",
+      "icon": "sparkles"
+    },
+    {
+      "id": "business",
+      "name": "Line of business",
+      "description": "Applications for finance, people, and everyday business operations",
+      "color": "#ef9d8f",
+      "icon": "workflow"
+    }
+  ],
+  "sites": [
+    {
+      "id": "sentinel",
+      "name": "Sentinel",
+      "description": "Your infrastructure, at a glance. A command center for service health, availability, and the signals that matter.",
+      "category": "observe",
+      "icon": "radar",
+      "url": null,
+      "tags": ["monitoring", "uptime", "dashboard", "health"],
+      "featured": true
+    },
+    {
+      "id": "pulse",
+      "name": "Pulse",
+      "description": "Follow the heartbeat of your network with performance metrics, traffic patterns, and capacity insights.",
+      "category": "observe",
+      "icon": "activity",
+      "url": null,
+      "tags": ["metrics", "performance", "traffic", "network"],
+      "featured": false
+    },
+    {
+      "id": "watchtower",
+      "name": "Watchtower",
+      "description": "An early warning system for certificate expiry, scheduled maintenance, and the things you would rather know ahead of time.",
+      "category": "observe",
+      "icon": "shield",
+      "url": null,
+      "tags": ["certificates", "alerts", "security", "expiry"],
+      "featured": false
+    },
+    {
+      "id": "forge",
+      "name": "Forge",
+      "description": "Turn your scripts into repeatable operations. Run jobs, follow their output, and give the whole team a reliable launch button.",
+      "category": "automate",
+      "icon": "terminal",
+      "url": null,
+      "tags": ["scripts", "jobs", "execution", "powershell", "python", "jenkins"],
+      "featured": true
+    },
+    {
+      "id": "relay",
+      "name": "Relay",
+      "description": "Connect the steps between your systems. Orchestrate workflows, scheduled tasks, and everyday operational handoffs.",
+      "category": "automate",
+      "icon": "workflow",
+      "url": null,
+      "tags": ["workflows", "tasks", "schedule", "automation"],
+      "featured": false
+    },
+    {
+      "id": "dispatch",
+      "name": "Dispatch",
+      "description": "A single place to prepare and coordinate software rollouts across your fleet.",
+      "category": "automate",
+      "icon": "code",
+      "url": null,
+      "tags": ["deployment", "software", "rollout", "fleet"],
+      "featured": false
+    },
+    {
+      "id": "atlas",
+      "name": "Atlas",
+      "description": "Know your network. Explore devices, compare configurations, and keep reliable backups of the infrastructure you depend on.",
+      "category": "configure",
+      "icon": "network",
+      "url": null,
+      "tags": ["ncm", "switch", "router", "backup", "configuration", "network"],
+      "featured": true
+    },
+    {
+      "id": "vault",
+      "name": "Vault",
+      "description": "A searchable inventory of your infrastructure assets, their owners, and their operational context.",
+      "category": "configure",
+      "icon": "database",
+      "url": null,
+      "tags": ["inventory", "assets", "cmdb", "devices"],
+      "featured": false
+    },
+    {
+      "id": "waypoint",
+      "name": "Waypoint",
+      "description": "Find your way through DNS records, address allocations, and the connections between them.",
+      "category": "configure",
+      "icon": "globe",
+      "url": null,
+      "tags": ["dns", "ipam", "address", "subnet"],
+      "featured": false
+    },
+    {
+      "id": "oracle",
+      "name": "Oracle",
+      "description": "An AI companion for your department. Ask questions, explore possibilities, and find your next good idea.",
+      "category": "intelligence",
+      "icon": "bot",
+      "url": null,
+      "tags": ["chat", "ai", "assistant", "agent", "help"],
+      "featured": true
+    },
+    {
+      "id": "codex",
+      "name": "Codex",
+      "description": "The team's collective knowledge, connected. Search runbooks, procedures, and solutions worth remembering.",
+      "category": "intelligence",
+      "icon": "search",
+      "url": null,
+      "tags": ["knowledge", "documentation", "runbooks", "wiki", "search"],
+      "featured": false
+    },
+    {
+      "id": "prism",
+      "name": "Prism",
+      "description": "See the story in your operational data. Explore reports and turn scattered signals into useful insight.",
+      "category": "intelligence",
+      "icon": "sparkles",
+      "url": null,
+      "tags": ["analytics", "reports", "insight", "data"],
+      "featured": false
+    },
+    {
+      "id": "accounting",
+      "name": "Accounting",
+      "description": "Manage financial records, accounts payable and receivable, budgets, and financial reporting.",
+      "category": "business",
+      "icon": "database",
+      "url": null,
+      "tags": [
+        "accounting",
+        "finance",
+        "invoices",
+        "accounts payable",
+        "accounts receivable",
+        "budget",
+        "financial reporting",
+        "lob"
+      ],
+      "featured": false
+    },
+    {
+      "id": "hr",
+      "name": "HR",
+      "description": "Access employee records, benefits, recruitment, and human resources services.",
+      "category": "business",
+      "icon": "globe",
+      "url": null,
+      "tags": [
+        "hr",
+        "human resources",
+        "employees",
+        "people",
+        "benefits",
+        "recruitment",
+        "payroll",
+        "lob"
+      ],
+      "featured": false
+    },
+    {
+      "id": "erp",
+      "name": "ERP",
+      "description": "Coordinate purchasing, inventory, orders, and the business processes managed in your enterprise resource planning system.",
+      "category": "business",
+      "icon": "workflow",
+      "url": null,
+      "tags": [
+        "erp",
+        "enterprise resource planning",
+        "purchasing",
+        "procurement",
+        "inventory",
+        "orders",
+        "operations",
+        "lob"
+      ],
+      "featured": false
+    }
+  ]
+}
