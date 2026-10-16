@@ -159,7 +159,7 @@ Fonts and generated graphics are served locally; the application requires no run
 
 Choose **Help** in the header (or press `?`) for a brief camera guide.
 
-- **Orbit:** left-drag around the point where you press. **Pan:** right-drag, middle-drag, or Shift-drag. **Zoom:** scroll toward the pointer, or use +/− at the current focus.
+- **Orbit:** left-drag around the point where you press. Rotation is unrestricted, including over the poles. **Pan:** right-drag, middle-drag, or Shift-drag. **Zoom:** scroll toward the pointer, or use +/− at the current focus.
 - **Select:** click an instrument or its name to focus and inspect it; click a category name to frame its group. Double-click a surface to move closer. A fresh gesture interrupts camera travel.
 - **Fly:** click empty scene space, then use WASD to move, R/F or E/Q for up/down, arrow keys to aim, and Shift to boost. Flight stays inside the scene boundary.
 - **Touch:** one finger orbits; two fingers pan and pinch to zoom. Tap an instrument’s name to select it.
@@ -174,22 +174,22 @@ Choose **Help** in the header (or press `?`) for a brief camera guide.
 
 ## Implementation
 
-React 19 + TypeScript + Vite, with Three.js through React Three Fiber. The scene loads separately, and switching to Directory unloads the renderer. Geometry, shaders, habitat textures, and studio reflections are generated locally; fonts are bundled with the application.
+React 19, TypeScript, and Vite; Three.js through React Three Fiber. The [3D scene](src/components/Observatory.tsx) loads on demand, with locally generated geometry, shaders, and bundled fonts.
 
-Destinations use procedural planets and orbital habitats, grouped into deterministic constellations on both sides of the primary star. Appending categories or instruments preserves existing destination positions; reordering entries or moving an instrument between categories can change its placement. The scene includes nebulae, variable stars, traffic, comets, selection halos, and HTML labels projected outside destination silhouettes. Pause and reduced motion freeze ambient effects while allowing navigation.
+Current UI, captured with Playwright:
 
-The camera separates direct manipulation from eased focus transitions. Orbit uses a cursor-picked pivot fixed for each gesture, pan follows the pointer at the focus depth, and zoom retains a cursor anchor during a wheel burst. Fresh input interrupts transitions. Keyboard flight can pass through bodies but stays inside the navigation sphere. Reduced motion makes focus transitions immediate.
+**Observatory**
 
-| Location                                                                          | Purpose                                                                                        |
-| --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `src/App.tsx`                                                                     | Catalog loading, search, filters, launch history, favorites, and view state.                   |
-| `src/components/CatalogStudio.tsx`                                                | Local catalog editing, import/export, and image assignment.                                    |
-| `src/components/Observatory.tsx`                                                  | 3D scene, WebGL fallback, and projected destination labels.                                    |
-| `src/components/FreeFlightControls.tsx`                                           | Pointer, wheel, touch, and keyboard camera input.                                              |
-| `src/components/CelestialBodies.tsx`, `OrbitalArchitecture.tsx`, `SystemLife.tsx` | Procedural bodies, lighting, environment, and ambient activity.                                |
-| `src/lib/`                                                                        | Catalog and image validation, browser preferences, layout, focus, camera math, and unit tests. |
-| `src/styles.css`, `observatory.css`, `interface.css`                              | Layout, scene overlays, and shared interface styling.                                          |
-| `tests/`                                                                          | Playwright browser tests and upload fixtures.                                                  |
-| `docs/evaluation/`                                                                | Captured visual evaluation images.                                                             |
+![Astrolabe overview with the primary star, planetary destinations, constellation labels, and camera controls](docs/screenshots/observatory.png)
 
-There are no environment variables required for normal operation. The two Playwright overrides documented above affect testing only.
+**Instrument focus and details**
+
+![Sentinel selected in the observatory, with a close camera view and its instrument details](docs/screenshots/instrument-focus.png)
+
+**Catalog studio**
+
+![Catalog studio showing instrument editing, globe image upload, and catalog import and export](docs/screenshots/catalog-studio.png)
+
+**Mobile Directory**
+
+<img src="docs/screenshots/mobile-directory.png" alt="Mobile Directory with the visible Help button, category navigation, and instrument cards" width="390" />

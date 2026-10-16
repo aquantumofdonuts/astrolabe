@@ -24,6 +24,84 @@ test.beforeEach(async ({ page }) => {
   await expect(page.locator('canvas')).toHaveAttribute('data-camera-moving', 'false')
 })
 
+test('one held left drag completes full rotations in either direction on both axes', async ({
+  page,
+}) => {
+  test.setTimeout(60000)
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await expect(
+    page.getByRole('button', { name: 'Pause ambient motion', exact: true })
+  ).toBeDisabled()
+  const canvas = page.locator('canvas')
+  const region = page.getByRole('region', { name: 'Free-flight camera', exact: true })
+  const bounds = (await canvas.boundingBox())!
+  const start = { x: bounds.x + bounds.width / 2 + 25, y: bounds.y + bounds.height / 2 - 20 }
+  for (const axis of ['horizontal', 'vertical']) {
+    for (const direction of [-1, 1]) {
+      await page.getByRole('button', { name: 'Reset camera', exact: true }).click()
+      await expect(canvas).toHaveAttribute('data-camera-moving', 'false')
+      const initial = await pose(page)
+      await region.evaluate((element) => {
+        element.addEventListener(
+          'pointerdown',
+          (event) => (element.dataset.testPointerId = String((event as PointerEvent).pointerId)),
+          { once: true }
+        )
+      })
+      await page.mouse.move(start.x, start.y)
+      await page.mouse.down()
+      const pivot = JSON.parse((await canvas.getAttribute('data-orbit-pivot'))!) as number[]
+      const initialAnchor = new Vector3()
+        .fromArray(pivot)
+        .sub(new Vector3().fromArray(initial.position))
+        .applyQuaternion(new Quaternion().fromArray(initial.quaternion).invert())
+      for (let step = 1; step <= 8; step++) {
+        const angle = (direction * step * Math.PI) / 2
+        // Extend the same drag beyond the viewport without releasing or repicking its pivot.
+        await region.evaluate(
+          (element, { x, y }) => {
+            element.dispatchEvent(
+              new PointerEvent('pointermove', {
+                bubbles: true,
+                pointerId: Number(element.dataset.testPointerId),
+                pointerType: 'mouse',
+                buttons: 1,
+                clientX: x,
+                clientY: y,
+              })
+            )
+          },
+          {
+            x: start.x - (axis === 'horizontal' ? (angle * bounds.height) / Math.PI : 0),
+            y: start.y - (axis === 'vertical' ? (angle * bounds.height) / Math.PI : 0),
+          }
+        )
+        await frame(page)
+        const current = await pose(page)
+        const expected = new Quaternion()
+          .setFromAxisAngle(new Vector3(0, 1, 0), axis === 'horizontal' ? angle : 0)
+          .multiply(new Quaternion().fromArray(initial.quaternion))
+          .multiply(
+            new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), axis === 'vertical' ? angle : 0)
+          )
+        expect(new Quaternion().fromArray(current.quaternion).angleTo(expected)).toBeLessThan(
+          0.000001
+        )
+        const anchor = new Vector3()
+          .fromArray(pivot)
+          .sub(new Vector3().fromArray(current.position))
+          .applyQuaternion(new Quaternion().fromArray(current.quaternion).invert())
+        expect(anchor.distanceTo(initialAnchor)).toBeLessThan(0.000001)
+      }
+      await page.mouse.up()
+      await frame(page)
+      const released = await pose(page)
+      await page.waitForTimeout(100)
+      expect(await pose(page)).toEqual(released)
+    }
+  }
+})
+
 test('empty-space orbit starts beneath each press, locks its pivot, and stops without drift', async ({
   page,
 }) => {

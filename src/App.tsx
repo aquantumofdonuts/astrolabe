@@ -1044,7 +1044,9 @@ export default function App() {
           <dl className="camera-help">
             <div>
               <dt>Orbit</dt>
-              <dd>Left-drag around the point where you press.</dd>
+              <dd>
+                Left-drag around the point where you press. Rotate freely, including over the poles.
+              </dd>
             </div>
             <div>
               <dt>Pan</dt>

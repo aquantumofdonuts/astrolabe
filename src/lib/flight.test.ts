@@ -19,17 +19,59 @@ it('flies through the core and turns back without changing position', () => {
   expect(new Vector3(0, 0, -1).applyQuaternion(flight.orientation).z).toBeCloseTo(1)
 })
 
-it('keeps the horizon level during repeated diagonal orbits and clamps pitch before the poles', () => {
-  const flight = controller()
-  for (let i = 0; i < 200; i++) {
-    flight.orbit(new Vector3(), 0.11, i < 100 ? 0.08 : -0.12)
-    const right = new Vector3(1, 0, 0).applyQuaternion(flight.orientation)
-    expect(Math.abs(right.y)).toBeLessThan(0.000001)
-    expect(flight.up.y).toBeGreaterThan(0.05)
-    expect(Math.abs(new Euler().setFromQuaternion(flight.orientation, 'YXZ').x)).toBeLessThan(
-      Math.PI / 2
-    )
+it('completes repeated full orbits in either direction across both axes and the scene boundary', () => {
+  for (const axis of [new Vector3(1, 0, 0), new Vector3(0, 1, 0)]) {
+    for (const direction of [-1, 1]) {
+      const flight = controller(new Vector3(0, 0, 59))
+      const pivot = axis.x ? new Vector3(0, 30, 0) : new Vector3(30, 0, 0)
+      const initial = cameraSpace(flight, pivot)
+      let crossedBoundary = false
+      const increment = (direction * Math.PI) / 24
+      for (let step = 1; step <= 192; step++) {
+        flight.orbit(pivot, axis.y * increment, axis.x * increment)
+        const expected = new Quaternion().setFromAxisAngle(axis, step * increment)
+        expect(flight.orientation.angleTo(expected)).toBeLessThan(0.000001)
+        expect(cameraSpace(flight, pivot).distanceTo(initial)).toBeLessThan(0.000001)
+        crossedBoundary ||= flight.position.length() > flight.radius
+      }
+      expect(crossedBoundary).toBe(true)
+      expect(flight.position.distanceTo(new Vector3(0, 0, 59))).toBeLessThan(0.000001)
+    }
   }
+})
+
+it('preserves an inverted orbit during zoom and starts reset from the visible orientation', () => {
+  const flight = controller()
+  flight.orbit(new Vector3(), 0.4, Math.PI)
+  expect(flight.up.y).toBeLessThan(0)
+  const inverted = flight.orientation.clone()
+  flight.dolly(new Vector3(), 0.3)
+  for (let i = 0; i < 20; i++) {
+    flight.step(1 / 60)
+    expect(flight.orientation.angleTo(inverted)).toBeLessThan(0.000001)
+  }
+  flight.transitionTo(new Vector3(0, 0, 15), new Quaternion(), new Vector3(), 0.65)
+  flight.step(0)
+  expect(flight.orientation.angleTo(inverted)).toBeLessThan(0.000001)
+  for (let i = 0; i < 50; i++) flight.step(1 / 60)
+  expect(flight.orientation.angleTo(new Quaternion())).toBeLessThan(0.000001)
+})
+
+it('continues panning and zooming smoothly after orbiting beyond the translation boundary', () => {
+  const flight = controller(new Vector3(0, 0, 59))
+  const pivot = new Vector3(30, 0, 0)
+  flight.orbit(pivot, Math.PI, 0)
+  expect(flight.position.length()).toBeGreaterThan(flight.radius)
+  const initial = flight.position.clone()
+  flight.pan(1, 0, 20, 42, 800)
+  expect(flight.position.distanceTo(initial)).toBeLessThan(0.1)
+  const beforeZoom = flight.position.clone()
+  const anchor = cameraSpace(flight, pivot)
+  flight.dolly(pivot, 0.001, true)
+  expect(flight.position.distanceTo(beforeZoom)).toBeLessThan(0.1)
+  const afterZoom = cameraSpace(flight, pivot)
+  expect(afterZoom.x / afterZoom.z).toBeCloseTo(anchor.x / anchor.z)
+  expect(afterZoom.y / afterZoom.z).toBeCloseTo(anchor.y / anchor.z)
 })
 
 it('holds an off-center picked point in the same screen position and has no release drift', () => {
@@ -114,11 +156,10 @@ it('cancels transitions at the visible pose and supports immediate reduced-motio
   expect(flight.position.toArray()).toEqual([0, 0, 21])
 })
 
-it('keeps translations, orbits, and transitions inside the navigation sphere', () => {
+it('keeps translations and transitions inside the navigation sphere', () => {
   const flight = controller(new Vector3(0, 0, 59))
   for (let i = 0; i < 80; i++) {
     flight.move(40, 20, -30)
-    flight.orbit(new Vector3(10, 5, 5), 0.5, 0.2)
     expect(flight.position.length()).toBeLessThanOrEqual(60.000001)
     flight.transitionTo(new Vector3(100, 20, 90), new Quaternion(), new Vector3())
     flight.step(0.05)

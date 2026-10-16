@@ -1,6 +1,7 @@
 import { Euler, MathUtils, Quaternion, Vector3 } from 'three'
 
 const UP = new Vector3(0, 1, 0)
+const RIGHT = new Vector3(1, 0, 0)
 const MAX_PITCH = Math.PI / 2 - 0.06
 const MIN_DISTANCE = 0.8
 
@@ -30,6 +31,7 @@ function upright(yaw: number, pitch: number) {
 
 type Transition = {
   start: Vector3
+  rotationStart: Quaternion | null
   yaw: number
   pitch: number
   yawDelta: number
@@ -38,7 +40,7 @@ type Transition = {
   duration: number
 }
 
-/** Upright free travel with a persistent inspection focus and bounded, finite transitions. */
+/** Free orbit with a persistent inspection focus and finite camera transitions. */
 export class FlightController {
   readonly position = new Vector3()
   readonly orientation = new Quaternion()
@@ -70,10 +72,15 @@ export class FlightController {
     return MathUtils.clamp(this.position.distanceTo(this.focus), MIN_DISTANCE, this.radius)
   }
 
+  private get translationRadius() {
+    // A free orbit can leave the usual sphere; later input must not snap back into it.
+    return Math.max(this.radius, this.position.length())
+  }
+
   move(right: number, up: number, forward: number) {
     this.stop()
     const translation = new Vector3(right, up, -forward).applyQuaternion(this.orientation)
-    const next = this.position.clone().add(translation).clampLength(0, this.radius)
+    const next = this.position.clone().add(translation).clampLength(0, this.translationRadius)
     this.focus.add(next.clone().sub(this.position))
     this.position.copy(next)
     this.destination.copy(next)
@@ -97,29 +104,16 @@ export class FlightController {
 
   orbit(pivot: Vector3, yaw: number, pitch: number) {
     this.stop()
-    const view = angles(this.orientation)
-    const pitchDelta = MathUtils.clamp(view.pitch + pitch, -MAX_PITCH, MAX_PITCH) - view.pitch
     const offset = this.position.clone().sub(pivot)
     const inverse = this.orientation.clone().invert()
-    const pose = (fraction: number) => {
-      const orientation = upright(view.yaw + yaw * fraction, view.pitch + pitchDelta * fraction)
-      const worldRotation = orientation.clone().multiply(inverse)
-      return { orientation, position: offset.clone().applyQuaternion(worldRotation).add(pivot) }
-    }
-    let result = pose(1)
-    if (result.position.length() > this.radius) {
-      // Approach the boundary continuously rather than rejecting an entire drag.
-      let low = 0,
-        high = 1
-      for (let i = 0; i < 16; i++) {
-        const middle = (low + high) / 2
-        if (pose(middle).position.length() <= this.radius) low = middle
-        else high = middle
-      }
-      result = pose(low)
-    }
-    this.position.copy(result.position).clampLength(0, this.radius)
-    this.orientation.copy(result.orientation)
+    // World-up yaw and camera-local pitch remain continuous through the poles.
+    // Orbit may leave the translation boundary to keep the picked pivot fixed.
+    this.orientation
+      .premultiply(new Quaternion().setFromAxisAngle(UP, yaw))
+      .multiply(new Quaternion().setFromAxisAngle(RIGHT, pitch))
+      .normalize()
+    const worldRotation = this.orientation.clone().multiply(inverse)
+    this.position.copy(offset.applyQuaternion(worldRotation).add(pivot))
     this.destination.copy(this.position)
     this.aim.copy(this.orientation)
     this.focus.copy(pivot)
@@ -136,7 +130,7 @@ export class FlightController {
     const next = offset
       .multiplyScalar(nextDistance / distance)
       .add(anchor)
-      .clampLength(0, this.radius)
+      .clampLength(0, this.translationRadius)
     this.transitionTo(next, this.orientation, anchor, immediate ? 0 : 0.18)
     this.zoomDirection = direction
   }
@@ -145,12 +139,18 @@ export class FlightController {
     const start = angles(this.orientation),
       end = angles(orientation)
     const yawDelta = Math.atan2(Math.sin(end.yaw - start.yaw), Math.cos(end.yaw - start.yaw))
-    this.destination.copy(position).clampLength(0, this.radius)
-    this.aim.copy(upright(end.yaw, end.pitch))
+    this.destination.copy(position).clampLength(0, this.translationRadius)
+    this.aim.copy(orientation).normalize()
     this.focus.copy(focus)
     this.zoomDirection = 0
     this.transition = {
       start: this.position.clone(),
+      // Preserve an inverted orbit pose during zoom and ease back upright on focus/reset.
+      rotationStart:
+        this.orientation.angleTo(upright(start.yaw, start.pitch)) > 0.000001 ||
+        this.aim.angleTo(upright(end.yaw, end.pitch)) > 0.000001
+          ? this.orientation.clone()
+          : null,
       yaw: start.yaw,
       pitch: start.pitch,
       yawDelta,
@@ -168,12 +168,15 @@ export class FlightController {
     const t = immediate ? 1 : Math.min(1, transition.elapsed / transition.duration)
     const eased = t * t * (3 - 2 * t)
     this.position.lerpVectors(transition.start, this.destination, eased)
-    this.orientation.copy(
-      upright(
-        transition.yaw + transition.yawDelta * eased,
-        transition.pitch + transition.pitchDelta * eased
+    if (transition.rotationStart)
+      this.orientation.slerpQuaternions(transition.rotationStart, this.aim, eased)
+    else
+      this.orientation.copy(
+        upright(
+          transition.yaw + transition.yawDelta * eased,
+          transition.pitch + transition.pitchDelta * eased
+        )
       )
-    )
     if (t === 1) {
       this.position.copy(this.destination)
       this.orientation.copy(this.aim)
@@ -183,7 +186,7 @@ export class FlightController {
     return true
   }
 
-  /** Exposed for horizon regression tests and consumers that need the world-up direction. */
+  /** The camera's current up direction, including inverted orbit poses. */
   get up() {
     return UP.clone().applyQuaternion(this.orientation)
   }
