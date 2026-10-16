@@ -463,9 +463,10 @@
 .cinematic .directory-card-top {
   padding-top: 20px;
 }
-.cinematic
-  :is(.directory-card .instrument-icon, .launchpad-icon, .mobile-details-heading .instrument-icon) {
+.cinematic.catalog-view .directory-card .instrument-icon,
+.cinematic :is(.launchpad-icon, .mobile-details-heading .instrument-icon) {
   display: grid;
+  justify-content: center;
   place-items: center;
   width: 44px;
   height: 44px;
@@ -482,6 +483,16 @@
   font-weight: 600;
   letter-spacing: -0.02em;
   margin-block: 8px 10px;
+}
+.cinematic .directory-heading h2 {
+  font-size: 23px;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  color: #d3e5f0;
+}
+.cinematic .scene-controls .icon-button[aria-pressed='true']:not(:disabled) {
+  background: #9bdfff26;
+  color: #e5f8ff;
 }
 .cinematic .directory-card-footer {
   background: #06111c4d;

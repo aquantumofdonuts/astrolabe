@@ -533,6 +533,7 @@ export default function App() {
           <nav className="collection-nav">
             <button
               className={collection === 'all' && category === 'all' ? 'active' : ''}
+              aria-pressed={collection === 'all' && category === 'all'}
               onClick={() => {
                 changeCategory('all')
               }}
@@ -543,6 +544,7 @@ export default function App() {
             </button>
             <button
               className={collection === 'favorites' ? 'active' : ''}
+              aria-pressed={collection === 'favorites'}
               onClick={() => {
                 clearSelection()
                 setCollection('favorites')
@@ -555,6 +557,7 @@ export default function App() {
             </button>
             <button
               className={collection === 'recent' ? 'active' : ''}
+              aria-pressed={collection === 'recent'}
               onClick={() => {
                 clearSelection()
                 setCollection('recent')
@@ -573,6 +576,7 @@ export default function App() {
               <button
                 key={entry.id}
                 className={category === entry.id ? 'active' : ''}
+                aria-pressed={category === entry.id}
                 onClick={() => changeCategory(entry.id)}
                 style={{ '--category-color': entry.color } as React.CSSProperties}
               >
@@ -625,6 +629,7 @@ export default function App() {
           <div className="view-tabs" aria-label="Instrument view">
             <button
               className={view === 'astrolabe' ? 'active' : ''}
+              aria-pressed={view === 'astrolabe'}
               onClick={() => changeView('astrolabe')}
               disabled={webglUnavailable}
             >
@@ -633,6 +638,7 @@ export default function App() {
             </button>
             <button
               className={view === 'directory' ? 'active' : ''}
+              aria-pressed={view === 'directory'}
               onClick={() => changeView('directory')}
             >
               <Grid2X2 size={15} />
@@ -737,6 +743,7 @@ export default function App() {
                     onClick={() => setPaused((value) => !value)}
                     disabled={reducedMotion}
                     aria-label={paused ? 'Resume ambient motion' : 'Pause ambient motion'}
+                    aria-pressed={paused || reducedMotion}
                     title={
                       reducedMotion
                         ? 'System reduced-motion preference is active'
@@ -762,6 +769,7 @@ export default function App() {
                     className="icon-button"
                     onClick={() => setExpanded((value) => !value)}
                     aria-label={expanded ? 'Exit expanded view' : 'Expand astrolabe'}
+                    aria-pressed={expanded}
                     title={expanded ? 'Exit expanded view' : 'Expand astrolabe'}
                   >
                     {expanded ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
@@ -784,9 +792,7 @@ export default function App() {
           ) : (
             <>
               <div className="directory-heading">
-                <span className="eyebrow">
-                  {activeCategory ? activeCategory.name.toUpperCase() : 'INSTRUMENT DIRECTORY'}
-                </span>
+                <h2>{activeCategory ? activeCategory.name : 'Instrument directory'}</h2>
               </div>
               <div className="directory-grid">
                 {visibleSites.map((site) => {
