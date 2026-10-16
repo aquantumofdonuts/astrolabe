@@ -9,7 +9,7 @@ import {
   ExternalLink,
   FlaskConical,
   Grid2X2,
-  Keyboard,
+  CircleHelp,
   Maximize2,
   Minimize2,
   Minus,
@@ -437,11 +437,15 @@ export default function App() {
           )}
         </div>
         <button
-          className="icon-button help-button"
-          aria-label="Keyboard shortcuts"
-          onClick={() => setHelpOpen(true)}
+          className="secondary-button help-button"
+          aria-haspopup="dialog"
+          onClick={() => {
+            setSearchOpen(false)
+            setHelpOpen(true)
+          }}
         >
-          <Keyboard size={19} />
+          <CircleHelp size={17} aria-hidden="true" />
+          Help
         </button>
       </header>
 
@@ -1032,68 +1036,43 @@ export default function App() {
       )}
       {helpOpen && (
         <Modal
-          title="Navigation controls"
-          subtitle="Camera, search, and keyboard shortcuts."
+          title="Astrolabe camera help"
+          subtitle="Move the view and select instruments."
           onClose={() => setHelpOpen(false)}
           className="help-modal"
         >
-          <div className="shortcuts">
+          <dl className="camera-help">
             <div>
-              <span>Orbit around the pointer</span>
-              <kbd>Left drag</kbd>
+              <dt>Orbit</dt>
+              <dd>Left-drag around the point where you press.</dd>
             </div>
             <div>
-              <span>Pan (right / middle drag)</span>
-              <kbd>Right drag</kbd>
+              <dt>Pan</dt>
+              <dd>Right-drag, middle-drag, or Shift-drag.</dd>
             </div>
             <div>
-              <span>Fly / strafe (scene focused)</span>
-              <kbd>W A S D</kbd>
+              <dt>Zoom</dt>
+              <dd>Scroll toward the pointer; use + / − to zoom at the current focus.</dd>
             </div>
             <div>
-              <span>Move up / down</span>
-              <kbd>R / F</kbd>
+              <dt>Select</dt>
+              <dd>
+                Click an instrument or its name to focus and inspect it. Click a category name to
+                frame its group. Double-click a surface to move closer.
+              </dd>
             </div>
             <div>
-              <span>Move down / up; aim</span>
-              <kbd>Q E / arrows</kbd>
+              <dt>Reset</dt>
+              <dd>Use Reset camera or Home to return to the overview.</dd>
             </div>
-            <div>
-              <span>Boost / reset view</span>
-              <kbd>Shift / Home</kbd>
-            </div>
-            <div>
-              <span>Search every instrument</span>
-              <kbd>Ctrl / ⌘ K</kbd>
-            </div>
-            <div>
-              <span>Focus search</span>
-              <kbd>/</kbd>
-            </div>
-            <div>
-              <span>Move through search results</span>
-              <kbd>↑ ↓</kbd>
-            </div>
-            <div>
-              <span>Launch a search result</span>
-              <kbd>Enter</kbd>
-            </div>
-            <div>
-              <span>Clear search / close a dialog</span>
-              <kbd>Esc</kbd>
-            </div>
-            <div>
-              <span>Show these shortcuts</span>
-              <kbd>?</kbd>
-            </div>
-          </div>
+          </dl>
           <p className="help-note">
-            Drag to orbit around the point where you press. The pivot stays fixed until you release.
-            Scroll to zoom toward the pointer. Right-drag, middle-drag, or Shift-drag to pan. Select
-            a node or category to fly to it. Double-click a surface for a closer view. Touch: one
-            finger orbits, two fingers pan and pinch to zoom. WASD flies freely, Q/E or F/R moves
-            down/up, and arrow keys aim. Reset returns to the overview. Directory provides direct
-            links to every tool. Your device’s reduced-motion preference is respected.
+            <strong>Keyboard:</strong> Click empty space in the scene first. WASD flies; R / F (or E
+            / Q) moves up / down; arrow keys aim; Shift boosts.
+          </p>
+          <p className="help-note">
+            <strong>Touch:</strong> One finger orbits; two fingers pan and pinch to zoom. Tap an
+            instrument’s name to select it.
           </p>
         </Modal>
       )}

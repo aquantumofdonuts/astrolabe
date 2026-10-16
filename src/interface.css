@@ -700,16 +700,44 @@
 .cinematic .demo-footer {
   margin-top: 20px;
 }
-.cinematic .shortcuts {
-  padding: 8px 24px 20px;
+.cinematic .help-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 12px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
-.cinematic .shortcuts > div {
+.cinematic .camera-help {
+  margin: 0;
+  padding: 8px 24px 16px;
+}
+.cinematic .camera-help > div {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--ui-line);
   font-size: 13px;
+  line-height: 1.6;
+}
+.cinematic .camera-help dt {
+  color: var(--ui-text);
+  font-weight: 600;
+}
+.cinematic .camera-help dd {
+  margin: 0;
   color: var(--ui-secondary);
-  border-color: var(--ui-line);
 }
 .cinematic .help-note {
-  padding: 0 24px 24px;
+  margin: 0;
+  padding: 0 24px 16px;
+  font-size: 13px;
+  color: var(--ui-secondary);
+}
+.cinematic .help-note:last-child {
+  padding-bottom: 24px;
 }
 .cinematic .mobile-details-content {
   padding: 20px 24px 24px;

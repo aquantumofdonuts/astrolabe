@@ -157,9 +157,14 @@ Fonts and generated graphics are served locally; the application requires no run
 
 ## Interaction and accessibility
 
-- Left-drag to orbit around the point under the pointer when the gesture starts. A solid surface supplies the exact pivot; empty space uses the cursor ray at the current viewing depth. The pivot stays fixed for that drag and is picked again on the next drag. No focus marker is displayed. The horizon stays upright and pitch stops short of the poles. Dragging has direct response and stops on release. Right-drag, middle-drag, or Shift-drag pans at the focus depth, so the scene follows the pointer at both close and distant views.
-- Scroll to zoom toward the pointer, or use +/− to zoom toward the current focus. Zoom slows near a surface and does not pass through it. Select an instrument for a close view, or select a category to frame its entire constellation. **Recenter** repeats the approach; double-clicking a physical surface moves closer. Home or Reset returns to the overview. These short transitions can be interrupted by a fresh gesture; reduced motion makes them immediate. Selecting from scene labels, category navigation or search smoothly centers the destination.
-- Focus the scene to use WASD for flight within the scene boundary, including through the core. R/F or E/Q move up/down, arrow keys aim, and Shift boosts travel. Keyboard navigation stays upright and stops when focus is lost. Touch: one finger orbits; two fingers pan and pinch to zoom. Wheel input is captured over the scene but leaves the mobile instrument list and other page content scrollable.
+Choose **Help** in the header (or press `?`) for a brief camera guide.
+
+- **Orbit:** left-drag around the point where you press. **Pan:** right-drag, middle-drag, or Shift-drag. **Zoom:** scroll toward the pointer, or use +/− at the current focus.
+- **Select:** click an instrument or its name to focus and inspect it; click a category name to frame its group. Double-click a surface to move closer. A fresh gesture interrupts camera travel.
+- **Fly:** click empty scene space, then use WASD to move, R/F or E/Q for up/down, arrow keys to aim, and Shift to boost. Flight stays inside the scene boundary.
+- **Touch:** one finger orbits; two fingers pan and pinch to zoom. Tap an instrument’s name to select it.
+- **Reset:** use Reset camera or Home to return to the overview. Reduced motion makes camera transitions immediate.
+
 - Search with `Ctrl/⌘ K` or `/`. Results match every word across names, descriptions, category names/IDs, and keywords. Arrow keys select a result; Enter launches it immediately.
 - Select a node to inspect it, then launch from the details panel (a focused dialog on smaller screens). Directory and the launchpad provide direct links.
 - Star instruments to personalize the launchpad. It shows up to four favorites in catalog order, falling back to up to four featured instruments when there are no favorites. Favorites and the 20 most recent distinct launches persist in this browser when storage is available, independently of the shared catalog.
