@@ -8,12 +8,16 @@ import seed from '../public/catalog.json' with { type: 'json' }
 test('renders the 3D astrolabe, selects nodes, and resets the view without runtime errors', async ({
   page,
 }) => {
+  test.setTimeout(60000)
   const errors: string[] = []
   page.on('pageerror', (error) => errors.push(error.message))
   page.on('console', (message) => {
     if (message.type() === 'error') errors.push(message.text())
   })
   await page.goto('/')
+  await expect(page.locator('.scene-experience')).toHaveAttribute('data-scene-state', 'ready', {
+    timeout: 30000,
+  })
   await expect(page.locator('.page-heading')).toHaveCount(0)
   await expect(page.getByRole('region', { name: 'Free-flight camera', exact: true })).toBeVisible()
   await expect(page.locator('canvas')).toHaveCount(1)

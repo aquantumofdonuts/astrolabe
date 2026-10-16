@@ -8,9 +8,20 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js'
 
 /** Locally generated studio reflections: no external environment or runtime CDN. */
-export function ObservatoryLighting({ economical }: { economical: boolean }) {
-  const { gl, scene, camera, size } = useThree()
+export function ObservatoryLighting({
+  economical,
+  onReady,
+  onUnavailable,
+}: {
+  economical: boolean
+  onReady: () => void
+  onUnavailable: () => void
+}) {
+  const { gl, scene, camera, size, invalidate } = useThree()
   const composer = useRef<EffectComposer | null>(null)
+  const warmed = useRef(false)
+  const reported = useRef(false)
+  const revealFrame = useRef(0)
   useEffect(() => {
     const room = new RoomEnvironment()
     const pmrem = new THREE.PMREMGenerator(gl)
@@ -46,9 +57,56 @@ export function ObservatoryLighting({ economical }: { economical: boolean }) {
   useEffect(() => {
     composer.current?.setSize(size.width, size.height)
   }, [size, economical])
+  useEffect(() => {
+    let cancelled = false
+    const context = gl.getContext()
+    const parallel = context.getExtension('KHR_parallel_shader_compile')
+    let frame = 0
+    const waitForPrograms = () => {
+      if (cancelled) return
+      if (context.isContextLost()) {
+        onUnavailable()
+        return
+      }
+      if (
+        parallel &&
+        gl.info.programs?.some(
+          (program) =>
+            program.program &&
+            !context.getProgramParameter(program.program, parallel.COMPLETION_STATUS_KHR)
+        )
+      ) {
+        frame = requestAnimationFrame(waitForPrograms)
+        return
+      }
+      warmed.current = true
+      invalidate()
+    }
+    frame = requestAnimationFrame(() => {
+      try {
+        // Use cancellable completion polling so leaving for Directory cannot keep
+        // querying programs after R3F disposes their renderer.
+        gl.compile(scene, camera)
+        waitForPrograms()
+      } catch {
+        if (!cancelled) onUnavailable()
+      }
+    })
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(frame)
+      cancelAnimationFrame(revealFrame.current)
+    }
+  }, [gl, scene, camera, invalidate, onUnavailable])
   useFrame(() => {
+    if (!warmed.current) return
     if (composer.current) composer.current.render()
     else gl.render(scene, camera)
+    if (!reported.current) {
+      reported.current = true
+      // Reveal only after a real frame, including postprocessing, has been submitted.
+      revealFrame.current = requestAnimationFrame(onReady)
+    }
   }, 1)
   return (
     <>

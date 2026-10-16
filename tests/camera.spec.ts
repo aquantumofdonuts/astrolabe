@@ -21,6 +21,9 @@ test.beforeEach(async ({ page }) => {
   // Input timing is exercised without software-rendered shadows/postprocessing.
   await page.addInitScript(() => localStorage.setItem('astrolabe.economical', 'true'))
   await page.goto('/')
+  await expect(page.locator('.scene-experience')).toHaveAttribute('data-scene-state', 'ready', {
+    timeout: 30000,
+  })
   await expect(page.locator('canvas')).toHaveAttribute('data-camera-moving', 'false')
 })
 

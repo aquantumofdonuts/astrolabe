@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowRight,
   ArrowUpRight,
@@ -32,9 +32,9 @@ import { readPreference, writePreference } from './lib/preferences'
 import { AstrolabeMark, Icon } from './components/Icon'
 import { Modal } from './components/Modal'
 import CatalogStudio from './components/CatalogStudio'
+import { catalogApi, readSharedCatalog, saveSharedCatalog } from './lib/liveCatalog'
 import DemoPreview from './components/DemoPreview'
-
-const Observatory = lazy(() => import('./components/Observatory'))
+import ObservatoryView from './components/ObservatoryView'
 const FAVORITES_KEY = 'astrolabe.favorites.v1'
 const RECENTS_KEY = 'astrolabe.recents.v1'
 
@@ -62,6 +62,10 @@ export default function App() {
   const [deployedCatalog, setDeployedCatalog] = useState<Catalog | null>(null)
   const [loadError, setLoadError] = useState('')
   const [localPreview, setLocalPreview] = useState(false)
+  const localPreviewRef = useRef(false)
+  const [catalogRevision, setCatalogRevision] = useState<string | null>(null)
+  const sharedRevision = useRef<string | null>(null)
+  const sharedRequest = useRef(0)
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('all')
   const [collection, setCollection] = useState<'all' | 'favorites' | 'recent'>('all')
@@ -95,6 +99,22 @@ export default function App() {
   const searchRef = useRef<HTMLInputElement>(null)
   const stageRef = useRef<HTMLElement>(null)
   const searchContainer = useRef<HTMLDivElement>(null)
+  const searchView = useRef(view)
+
+  const clearSelection = useCallback(() => {
+    setSelectedId(null)
+    setMobileDetailsOpen(false)
+    setVisit(null)
+  }, [])
+
+  const changeView = useCallback(
+    (next: 'astrolabe' | 'directory') => {
+      clearSelection()
+      setView(next)
+      setExpanded(false)
+    },
+    [clearSelection]
+  )
 
   useEffect(() => {
     if (view === 'directory') setExpanded(false)
@@ -102,8 +122,29 @@ export default function App() {
 
   useEffect(() => {
     const abort = new AbortController()
-    fetch(`${import.meta.env.BASE_URL}catalog.json`, { signal: abort.signal, cache: 'no-cache' })
-      .then((response) => {
+    let events: EventSource | undefined
+    const refreshShared = async () => {
+      const request = ++sharedRequest.current
+      const shared = await readSharedCatalog(abort.signal)
+      if (abort.signal.aborted || request !== sharedRequest.current) return
+      if (shared.revision === sharedRevision.current) return
+      sharedRevision.current = shared.revision
+      setDeployedCatalog(shared.catalog)
+      setCatalogRevision(shared.revision)
+      if (!localPreviewRef.current) setCatalog(shared.catalog)
+    }
+    readSharedCatalog(abort.signal)
+      .then((shared) => {
+        sharedRevision.current = shared.revision
+        setCatalogRevision(shared.revision)
+        return shared.catalog
+      })
+      .catch(async (error) => {
+        if (abort.signal.aborted) throw error
+        const response = await fetch(`${import.meta.env.BASE_URL}catalog.json`, {
+          signal: abort.signal,
+          cache: 'no-cache',
+        })
         if (!response.ok) throw new Error(`Catalog request failed (${response.status}).`)
         return response.json()
       })
@@ -115,6 +156,7 @@ export default function App() {
           const saved = localStorage.getItem(LOCAL_CATALOG_KEY)
           if (saved) {
             current = validateCatalog(JSON.parse(saved))
+            localPreviewRef.current = true
             setLocalPreview(true)
           }
         } catch {
@@ -122,11 +164,22 @@ export default function App() {
         }
         setCatalog(current)
         setSelectedId(null)
+        // Static deployments retain the existing local preview/import/export workflow.
+        if (sharedRevision.current && !abort.signal.aborted) {
+          events = new EventSource(`${catalogApi}/events`)
+          events.onmessage = (event) => {
+            if (JSON.parse(event.data) !== sharedRevision.current)
+              void refreshShared().catch(() => {})
+          }
+        }
       })
       .catch((error) => {
         if (error.name !== 'AbortError') setLoadError(error.message)
       })
-    return () => abort.abort()
+    return () => {
+      abort.abort()
+      events?.close()
+    }
   }, [])
   useEffect(() => {
     if (!toast) return
@@ -176,11 +229,15 @@ export default function App() {
     [catalog, query]
   )
   useEffect(() => {
+    const viewChanged = searchView.current !== view
+    searchView.current = view
     if (!query.trim()) return
     setCategory('all')
     setCollection('all')
-    setSelectedId(allMatches[searchIndex]?.id ?? null)
-  }, [query, allMatches, searchIndex])
+    // Returning to the scene must not reopen details for the previous search preview.
+    if (view === 'astrolabe' && !viewChanged) setSelectedId(allMatches[searchIndex]?.id ?? null)
+    else clearSelection()
+  }, [query, allMatches, searchIndex, view, clearSelection])
   const visibleSites = useMemo(() => {
     let sites = allMatches.filter((site) => category === 'all' || site.category === category)
     if (collection === 'favorites') sites = sites.filter((site) => favorites.includes(site.id))
@@ -191,6 +248,20 @@ export default function App() {
     return sites
   }, [allMatches, category, collection, favorites, recents])
   const selected = catalog?.sites.find((site) => site.id === selectedId)
+  const activeDemo = catalog?.sites.find((site) => site.id === demo?.id)
+  useEffect(() => {
+    if (!catalog) return
+    if (category !== 'all' && !catalog.categories.some((entry) => entry.id === category))
+      setCategory('all')
+    if (demo && !activeDemo) setDemo(null)
+  }, [catalog, category, demo, activeDemo])
+  useEffect(() => {
+    if (!selected) {
+      setMobileDetailsOpen(false)
+      if (selectedId) clearSelection()
+    } else if (!query.trim() && !visibleSites.some((site) => site.id === selected.id))
+      clearSelection()
+  }, [selected, selectedId, visibleSites, query, clearSelection])
   const selectedCategory = catalog?.categories.find((entry) => entry.id === selected?.category)
   const activeCategory = catalog?.categories.find((entry) => entry.id === category)
   const favoritesCount = catalog?.sites.filter((site) => favorites.includes(site.id)).length || 0
@@ -229,7 +300,7 @@ export default function App() {
     setQuery('')
     setCategory(id)
     setCollection('all')
-    setSelectedId(null)
+    clearSelection()
     if (id === 'all') {
       setVisit(null)
       setResetKey((key) => key + 1)
@@ -242,11 +313,19 @@ export default function App() {
   }
   const onUnavailable = useCallback(() => {
     setWebglUnavailable(true)
-    setView('directory')
+    changeView('directory')
     setToast(
       '3D rendering is unavailable in this browser. All instruments are available in the directory.'
     )
-  }, [])
+  }, [changeView])
+
+  const startIdle = useCallback(() => {
+    clearSelection()
+    setQuery('')
+    setCategory('all')
+    setCollection('all')
+    setSearchOpen(false)
+  }, [clearSelection])
 
   if (!catalog)
     return (
@@ -314,8 +393,7 @@ export default function App() {
           onClick={(event) => {
             event.preventDefault()
             resetFilters()
-            setSelectedId(null)
-            setView(webglUnavailable ? 'directory' : 'astrolabe')
+            changeView(webglUnavailable ? 'directory' : 'astrolabe')
             setResetKey((key) => key + 1)
           }}
         >
@@ -466,6 +544,7 @@ export default function App() {
             <button
               className={collection === 'favorites' ? 'active' : ''}
               onClick={() => {
+                clearSelection()
                 setCollection('favorites')
                 setCategory('all')
               }}
@@ -477,6 +556,7 @@ export default function App() {
             <button
               className={collection === 'recent' ? 'active' : ''}
               onClick={() => {
+                clearSelection()
                 setCollection('recent')
                 setCategory('all')
               }}
@@ -545,7 +625,7 @@ export default function App() {
           <div className="view-tabs" aria-label="Instrument view">
             <button
               className={view === 'astrolabe' ? 'active' : ''}
-              onClick={() => setView('astrolabe')}
+              onClick={() => changeView('astrolabe')}
               disabled={webglUnavailable}
             >
               <Orbit size={16} />
@@ -553,7 +633,7 @@ export default function App() {
             </button>
             <button
               className={view === 'directory' ? 'active' : ''}
-              onClick={() => setView('directory')}
+              onClick={() => changeView('directory')}
             >
               <Grid2X2 size={15} />
               Directory
@@ -580,30 +660,31 @@ export default function App() {
           {view === 'astrolabe' ? (
             <>
               <div className="scene-canvas">
-                <Suspense
-                  fallback={
-                    <div className="scene-loading">
-                      <AstrolabeMark size={48} />
-                      <span>Opening the observatory…</span>
-                    </div>
+                <ObservatoryView
+                  catalog={catalog}
+                  visibleIds={visibleSites.map((site) => site.id)}
+                  selectedId={selectedId}
+                  category={category}
+                  paused={paused}
+                  reducedMotion={reducedMotion}
+                  economical={economical}
+                  resetKey={resetKey}
+                  zoomRequest={zoomRequest}
+                  visit={visit}
+                  onCategory={changeCategory}
+                  onSelect={select}
+                  onUnavailable={onUnavailable}
+                  onDirectory={() => changeView('directory')}
+                  idleEnabled={
+                    !paused &&
+                    !reducedMotion &&
+                    !studioOpen &&
+                    !helpOpen &&
+                    !demo &&
+                    !mobileDetailsOpen
                   }
-                >
-                  <Observatory
-                    catalog={catalog}
-                    visibleIds={visibleSites.map((site) => site.id)}
-                    selectedId={selectedId}
-                    category={category}
-                    paused={paused}
-                    reducedMotion={reducedMotion}
-                    economical={economical}
-                    resetKey={resetKey}
-                    zoomRequest={zoomRequest}
-                    visit={visit}
-                    onCategory={changeCategory}
-                    onSelect={select}
-                    onUnavailable={onUnavailable}
-                  />
-                </Suspense>
+                  onIdleStart={startIdle}
+                />
               </div>
               {!visibleSites.length && (
                 <div className="scene-empty">
@@ -820,7 +901,7 @@ export default function App() {
               <button
                 className="inspector-close"
                 aria-label="Close instrument details"
-                onClick={() => setSelectedId(null)}
+                onClick={clearSelection}
               >
                 Close <X size={14} />
               </button>
@@ -882,7 +963,7 @@ export default function App() {
                       setQuery(tag)
                       setCategory('all')
                       setCollection('all')
-                      setView('directory')
+                      changeView('directory')
                     }}
                   >
                     {tag}
@@ -940,14 +1021,32 @@ export default function App() {
       {studioOpen && (
         <CatalogStudio
           catalog={catalog}
+          revision={catalogRevision}
+          onSave={async (next, revision) => {
+            const shared = await saveSharedCatalog(next, revision)
+            sharedRequest.current++
+            sharedRevision.current = shared.revision
+            try {
+              localStorage.removeItem(LOCAL_CATALOG_KEY)
+            } catch {
+              /* Session-only preview. */
+            }
+            localPreviewRef.current = false
+            setLocalPreview(false)
+            setDeployedCatalog(shared.catalog)
+            setCatalogRevision(shared.revision)
+            setCatalog(shared.catalog)
+            clearSelection()
+            resetFilters()
+            return shared
+          }}
           onClose={() => setStudioOpen(false)}
           onApply={(next) => {
             const persisted = writePreference(LOCAL_CATALOG_KEY, next)
             setCatalog(next)
+            localPreviewRef.current = true
             setLocalPreview(true)
-            setSelectedId(
-              next.sites.find((site) => site.id === selectedId)?.id || next.sites[0]?.id || null
-            )
+            setSelectedId(next.sites.find((site) => site.id === selectedId)?.id || null)
             resetFilters()
             if (!persisted)
               setToast(
@@ -963,19 +1062,20 @@ export default function App() {
             }
             if (deployedCatalog) {
               setCatalog(deployedCatalog)
-              setSelectedId(deployedCatalog.sites[0]?.id || null)
+              clearSelection()
             }
             setLocalPreview(false)
+            localPreviewRef.current = false
             setStudioOpen(false)
             resetFilters()
             setToast('Restored the deployed catalog.')
           }}
         />
       )}
-      {demo && (
+      {demo && activeDemo && (
         <DemoPreview
-          site={demo}
-          category={catalog.categories.find((entry) => entry.id === demo.category)!}
+          site={activeDemo}
+          category={catalog.categories.find((entry) => entry.id === activeDemo.category)!}
           onClose={() => setDemo(null)}
           onEdit={() => {
             setDemo(null)
@@ -987,7 +1087,7 @@ export default function App() {
         <Modal
           title={selected.name}
           subtitle={`${selectedCategory.name} / Instrument details`}
-          onClose={() => setMobileDetailsOpen(false)}
+          onClose={clearSelection}
           className="mobile-details-modal"
         >
           <div
@@ -1016,7 +1116,7 @@ export default function App() {
                     setQuery(tag)
                     setCategory('all')
                     setCollection('all')
-                    setView('directory')
+                    changeView('directory')
                     setMobileDetailsOpen(false)
                   }}
                 >
@@ -1075,6 +1175,10 @@ export default function App() {
           <p className="help-note">
             <strong>Touch:</strong> One finger orbits; two fingers pan and pinch to zoom. Tap an
             instrument’s name to select it.
+          </p>
+          <p className="help-note">
+            <strong>Idle tour:</strong> After 45 seconds without input, the whole system slowly
+            orbits in view. Any input returns to the initial overview.
           </p>
         </Modal>
       )}

@@ -2,7 +2,7 @@
 
 A self-hostable observatory for your department’s tools. A freely navigable Three.js observatory provides the exploration; task-oriented search, a complete directory, and direct launch links keep everything reachable.
 
-The included catalog contains 15 fictional instruments across five editable categories. All sample URLs are `null`, so launching a sample opens a clearly marked demo preview. Add your own HTTP/HTTPS destinations through Catalog studio or by editing `public/catalog.json`. The application is a static frontend with no backend, accounts, live health checks, or shared preference database.
+The included catalog contains 15 fictional instruments across five editable categories. All sample URLs are `null`, so launching a sample opens a clearly marked demo preview. Add your own HTTP/HTTPS destinations through Catalog studio or by editing `public/catalog.json`. A small Node.js server supports live catalog saves; static hosting also works with import/export and local previews. There are no built-in accounts, live health checks, or shared preference database.
 
 ## Run locally
 
@@ -22,12 +22,13 @@ npm run build
 npm run preview
 ```
 
-Preview serves `dist/` on the URL Vite prints (normally http://127.0.0.1:4173). It requires a build first and is intended for local verification. Changes to `public/catalog.json` appear immediately in the development server; rebuild to copy them into `dist/` for preview or a static deployment.
+Preview serves `dist/` on the URL Vite prints (normally http://127.0.0.1:4173). It requires a build first and is intended for local verification. Development supports live saves to `public/catalog.json`. Vite preview and static hosting support local previews and import/export. To run the production server with live saving, build and run `npm start` (http://localhost:8080); it serves `dist/` and uses `public/catalog.json` as the writable catalog.
 
 ### Checks
 
 ```sh
 npm test
+npm run test:server
 npx prettier --check README.md
 ```
 
@@ -40,13 +41,13 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-On Linux, `npx playwright install --with-deps chromium` also installs required system libraries. The browser configuration prefers `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`, then `/usr/bin/google-chrome`, then bundled Chromium. It starts a Vite development server on `127.0.0.1:4173` automatically. To test an already running deployment instead, set `ASTROLABE_TEST_BASE_URL`, for example:
+On Linux, `npx playwright install --with-deps chromium` also installs required system libraries. The browser configuration prefers `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`, then `/usr/bin/google-chrome`, then bundled Chromium. The browser test script builds the production bundle for isolated live-save tests. Playwright starts a Vite development server on `127.0.0.1:4173` automatically. To test an already running deployment instead, set `ASTROLABE_TEST_BASE_URL`, for example:
 
 ```sh
 ASTROLABE_TEST_BASE_URL=http://127.0.0.1:8080 npm run test:e2e
 ```
 
-Browser tests cover scene selection, camera controls and boundaries, label stability, search and keyboard launching, favorites, catalog editing/import/export, globe images, responsive layouts, reduced motion, and WebGL fallback. They use software-rendering flags for Chromium; assess graphics performance separately on the devices that will run the portal.
+Browser tests cover scene selection, camera controls and boundaries, label stability, search and keyboard launching, favorites, catalog editing/import/export, live saves and cross-browser updates, globe images, responsive layouts, reduced motion, and WebGL fallback. They use software-rendering flags for Chromium; assess graphics performance separately on the devices that will run the portal.
 
 `npm run format` formats source, tests, configuration, the sample catalog, and this README in place.
 
@@ -58,11 +59,12 @@ The shared source of truth is **`public/catalog.json`**. It is fetched at runtim
 2. Edit a sample or choose **Add instrument**. Supply a name, useful description, category, icon, and URL. Add comma-separated search keywords as needed; leave the keyword field empty for no tags. Leave the URL blank for a demo preview. Feature a tool to make it eligible for the initial launchpad.
 3. Use **Categories** to change category names, colors, descriptions, and icons, or create a category. Reassign its instruments before deleting a category.
 4. Choose **Apply local preview** to try the changes. This saves an override in this browser’s local storage and displays a persistent preview banner. Other browsers still see the deployed catalog.
-5. Choose **Export**, then replace `public/catalog.json` with the downloaded file. Publish it using the Docker or static-server workflow below. Export validates the editor draft and does not require applying a local preview first.
+5. Choose **Save** to update the shared JSON immediately, clear this browser’s preview, and apply the catalog in all connected browsers without reloading. An older editor draft cannot overwrite a newer shared save; export your draft and restore the latest catalog before merging changes.
+6. On static hosting, choose **Export**, then replace `public/catalog.json` with the downloaded file. Publish it using the Docker or static-server workflow below. Export validates the editor draft and does not require applying a local preview first.
 
-**Import** validates an existing JSON catalog before replacing the editor’s draft. **Restore deployed catalog** removes this browser’s preview and reloads the deployed catalog already fetched for the current page. Reload the page first if you have changed that file on the server.
+**Import** validates an existing JSON catalog before replacing the editor’s draft. **Restore deployed catalog** removes this browser’s preview and restores the latest shared catalog received by the page. Live updates preserve active local previews and unsaved editor drafts. On static hosting, reload the page first after changing the server file; Save is unavailable there.
 
-Catalog studio is a local authoring utility accessible to any visitor. It cannot write server files; publishing is controlled by access to the deployed file or repository. Local previews, favorites, recent launches, and graphics quality are stored per browser origin and are not synchronized between devices. If browser storage is unavailable or full, changes may last only for the current session; export your catalog to keep it.
+Catalog studio is accessible to any visitor. With the Node.js server, any visitor who can reach the save endpoint can publish changes; use your reverse proxy/SSO to restrict the portal or protect `PUT /api/catalog` to limit publishing. Saves use the same schema validation as the editor and atomically replace the file before broadcasting a live update. Local previews, favorites, recent launches, and graphics quality are stored per browser origin and are not synchronized between devices. If browser storage is unavailable or full, changes may last only for the current session; export your catalog to keep it.
 
 ### Catalog format
 
@@ -118,7 +120,7 @@ In **Catalog studio → Instruments → Globe image**, upload PNG, JPEG, WebP, G
 
 Assigned images replace any planetary or station model with a rotating globe. The image repeats on both hemispheres so an icon is recognizable from either side, with atmosphere, day/night shading, and animated night-side lights preserved. **Remove globe image** restores the original model. Existing node images can also be assigned to another instrument. Thumbnails appear in the editor, search, and Directory.
 
-The optional instrument `image` field stores a normalized PNG/JPEG/WebP data URL inside the catalog. Apply local preview to save it in this browser; export/import includes the images with no separate asset files. Catalog studio’s file importer accepts up to 28 MiB. Browser storage has a smaller browser-dependent quota: if a preview cannot be persisted, the editor explicitly reports a session-only preview and prompts export. Uploaded originals are never retained. Invalid image decoding falls back to a procedural globe without taking down the scene.
+The optional instrument `image` field stores a normalized PNG/JPEG/WebP data URL inside the catalog. Save publishes it to the shared catalog; Apply local preview keeps it in this browser. Export/import includes the images with no separate asset files. Catalog studio’s file importer accepts up to 28 MiB. Browser storage has a smaller browser-dependent quota: if a preview cannot be persisted, the editor explicitly reports a session-only preview and prompts export. Uploaded originals are never retained. Invalid image decoding falls back to a procedural globe without taking down the scene.
 
 The schema accepts up to 200 instruments, but the included 3D layout is demonstrated with 15. Schema limits do not guarantee a readable or performant 3D scene at maximum capacity. Use Directory for larger collections and evaluate your catalog on target devices.
 
@@ -129,31 +131,27 @@ The schema accepts up to 200 instruments, but the included 3D layout is demonstr
 Requires Docker Engine and the Docker Compose plugin. From the repository root:
 
 ```sh
-docker compose up --build -d
+ASTROLABE_USER="$(id -u):$(id -g)" docker compose up --build -d
 ```
 
-Open http://localhost:8080. Compose builds the frontend in a Node.js stage and serves it with Nginx. It mounts `public/catalog.json` read-only over the built catalog, so catalog changes need no application rebuild.
+Open http://localhost:8080. Compose builds the frontend and runs the Node.js server with your host UID/GID so it can write the mounted catalog. It mounts the `public/` directory at `/app/catalog` so **Save** persists to the host’s `public/catalog.json` and survives container recreation. `ASTROLABE_USER` defaults to `1000:1000` if omitted; set it to the owner of `public/` (or persist it in your Compose `.env`). The directory and file must be writable by that user. Mount the directory rather than a single file: saving uses atomic file replacement.
 
-After replacing the host catalog file, recreate the container to ensure the file bind mount points at the replacement:
-
-```sh
-docker compose up -d --force-recreate astrolabe
-```
-
-Reload the page afterward. An active local preview still takes precedence until you restore the deployed catalog. For application code or dependency changes, run `docker compose up --build -d` again.
+Save changes in Catalog studio; no rebuild or reload is needed. Valid direct edits to the mounted catalog are also broadcast to connected browsers. For application code or dependency changes, repeat the build/start command above.
 
 ```sh
 docker compose logs -f astrolabe
 docker compose down
 ```
 
-The supplied Nginx configuration serves `catalog.json` with `Cache-Control: no-store`, hashed assets with a one-year immutable cache, and other responses with `no-cache`. The container health check requests the web root; it does not validate catalog content or linked applications.
+The server serves `catalog.json` and the catalog API with `Cache-Control: no-store`, hashed assets with a one-year immutable cache, and other responses with `no-cache`. The container health check requests the web root; it does not validate linked applications. Preserve the original Host header in a reverse proxy so same-origin Save requests can be verified. When proxying live updates, disable buffering for `/api/catalog/events` and allow long-lived SSE connections.
+
+For a Node.js deployment without Docker, run `npm ci`, `npm run build`, and `npm start`. Optional environment variables: `PORT` (8080), `HOST` (`0.0.0.0`), `STATIC_DIR` (`dist`), and `CATALOG_PATH` (`public/catalog.json`). Paths are relative to the working directory unless absolute. The runtime server has no npm dependencies and shares the frontend’s catalog validator.
 
 ### Any static web server
 
 Run `npm run build` and serve the contents of `dist/` at your domain’s root with Nginx, Caddy, or an existing web server. Keep `catalog.json` uncached; [`nginx.conf`](nginx.conf) provides the included caching configuration. To publish only catalog changes, replace the served `catalog.json` directly, or update `public/catalog.json`, rebuild, and redeploy `dist/`. Reload clients to fetch the new catalog, and restore the deployed catalog if a local preview is active.
 
-Fonts and generated graphics are served locally; the application requires no runtime CDN, analytics, or backend API. Real destinations open in a new tab and handle their own authentication. Put the portal behind your usual reverse proxy/SSO if access to the directory should be restricted.
+Fonts and generated graphics are served locally; static hosting requires no runtime CDN, analytics, or backend API. Live Save requires the included Node.js server. Real destinations open in a new tab and handle their own authentication. Put the portal behind your usual reverse proxy/SSO if access to the directory should be restricted.
 
 ## Interaction and accessibility
 
@@ -170,6 +168,7 @@ Choose **Help** in the header (or press `?`) for a brief camera guide.
 - Star instruments to personalize the launchpad. It shows up to four favorites in catalog order, falling back to up to four featured instruments when there are no favorites. Favorites and the 20 most recent distinct launches persist in this browser when storage is available, independently of the shared catalog.
 - Directory is the initial view below 900 pixels wide and the automatic fallback when WebGL 2 or scene initialization is unavailable. Switching to it unloads the 3D renderer.
 - **Quality: light** disables bloom and dynamic shadows and reduces pixel density and star count. The preference persists locally. All tools remain available in both quality modes.
+- **Idle tour:** after 45 seconds without input, the camera frames the complete system and slowly orbits it. Mouse, keyboard, or touch input immediately restores the initial overview. Tours wait for loading to finish and stay off while motion is paused, reduced motion is enabled, a dialog is open, or the tab is hidden.
 - Ambient motion can be paused. OS reduced-motion preferences suppress it automatically. Keyboard focus, native modal focus trapping, a skip link, and named controls support operation without a mouse.
 
 ## Implementation
@@ -188,7 +187,7 @@ Current UI, captured with Playwright:
 
 **Catalog studio**
 
-![Catalog studio showing instrument editing, globe image upload, and catalog import and export](docs/screenshots/catalog-studio.png)
+![Catalog studio showing instrument editing, globe image upload, and catalog import, export, local preview, and live Save](docs/screenshots/catalog-studio.png)
 
 **Mobile Directory**
 

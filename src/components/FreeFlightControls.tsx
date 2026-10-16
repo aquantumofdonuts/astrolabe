@@ -1,10 +1,56 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Matrix4, PerspectiveCamera, Quaternion, Raycaster, Vector2, Vector3 } from 'three'
 import type { RefObject } from 'react'
 import { FlightController, wheelTravel } from '../lib/flight'
 import { focusDistance } from '../lib/focus'
 import type { FocusTarget } from '../lib/focus'
+import { overviewPose } from '../lib/overview'
+import type { Overview, ViewInsets } from '../lib/overview'
+
+const IDLE_DELAY_MS = 45_000
+const IDLE_ORBIT_SPEED = 0.025
+
+function overviewInsets(element: HTMLElement): ViewInsets {
+  const rect = element.getBoundingClientRect()
+  const insets = {
+    top: Math.max(40, -rect.top + 16),
+    right: Math.max(70, rect.right - window.innerWidth + 16),
+    bottom: Math.max(54, rect.bottom - window.innerHeight + 16),
+    left: Math.max(70, -rect.left + 16),
+  }
+  for (const selector of [
+    '.topbar',
+    '.sidebar',
+    '.view-toolbar',
+    '.local-preview-banner',
+    '.scene-controls',
+    '.mobile-scene-directory',
+  ]) {
+    const overlay = document.querySelector(selector)?.getBoundingClientRect()
+    if (
+      !overlay ||
+      !overlay.width ||
+      !overlay.height ||
+      overlay.bottom <= rect.top ||
+      overlay.top >= rect.bottom ||
+      overlay.right <= rect.left ||
+      overlay.left >= rect.right
+    )
+      continue
+    if (selector === '.scene-controls' || selector === '.mobile-scene-directory')
+      insets.bottom = Math.max(insets.bottom, rect.bottom - overlay.top + 16)
+    else insets.top = Math.max(insets.top, overlay.bottom - rect.top + 20)
+  }
+  return insets
+}
+
+type IdleOrbit = {
+  startedAt: number
+  position: Vector3
+  orientation: Quaternion
+  insets: ViewInsets
+}
 
 type Props = {
   host: RefObject<HTMLDivElement | null>
@@ -15,6 +61,9 @@ type Props = {
   reducedMotion: boolean
   visitTarget?: FocusTarget
   visitKey: number
+  overview: Overview
+  idleEnabled: boolean
+  onIdleStart: () => void
 }
 
 export default function FreeFlightControls({
@@ -26,8 +75,11 @@ export default function FreeFlightControls({
   reducedMotion,
   visitTarget,
   visitKey,
+  overview,
+  idleEnabled,
+  onIdleStart,
 }: Props) {
-  const { camera, gl, invalidate, scene } = useThree()
+  const { camera, gl, invalidate, scene, size } = useThree()
   const flight = useMemo(() => new FlightController(radius), [radius])
   const keys = useRef(new Set<string>())
   const previousZoom = useRef(zoomRequest)
@@ -35,6 +87,7 @@ export default function FreeFlightControls({
   const gestureMode = useRef('idle')
   const keyVelocity = useRef(new Vector3())
   const forward = useMemo(() => new Vector3(), [])
+  const idle = useRef<IdleOrbit | null>(null)
   const travelScale = homeDistance / 22
   const homePose = useMemo(() => {
     const position = new Vector3(0, 0.3, homeDistance)
@@ -43,6 +96,101 @@ export default function FreeFlightControls({
     )
     return { position, orientation }
   }, [homeDistance])
+
+  const stopIdle = useCallback(() => {
+    if (!idle.current) return
+    idle.current = null
+    keys.current.clear()
+    keyVelocity.current.set(0, 0, 0)
+    flight.reset(homePose.position, homePose.orientation)
+    camera.position.copy(flight.position)
+    camera.quaternion.copy(flight.orientation)
+    camera.far = Math.max(240, radius * 4)
+    camera.updateProjectionMatrix()
+    camera.updateMatrixWorld()
+    gl.domElement.dataset.cameraIdle = 'false'
+    invalidate()
+  }, [camera, flight, gl, homePose, invalidate, radius])
+
+  useEffect(() => {
+    if (!idleEnabled || reducedMotion) {
+      stopIdle()
+      return
+    }
+    let timer = 0
+    const pointers = new Set<number>()
+    const heldKeys = new Set<string>()
+    const schedule = () => {
+      window.clearTimeout(timer)
+      if (document.hidden || !document.hasFocus() || pointers.size || heldKeys.size) return
+      timer = window.setTimeout(() => {
+        const element = host.current
+        if (!element || document.hidden || !document.hasFocus() || pointers.size || heldKeys.size)
+          return
+        if (document.activeElement?.matches('input, textarea, select, [contenteditable="true"]'))
+          return
+        const rect = element.getBoundingClientRect()
+        if (rect.bottom <= 0 || rect.top >= window.innerHeight) return
+        flight.stop()
+        keys.current.clear()
+        keyVelocity.current.set(0, 0, 0)
+        idle.current = {
+          startedAt: performance.now(),
+          position: flight.position.clone(),
+          orientation: flight.orientation.clone(),
+          insets: overviewInsets(element),
+        }
+        onIdleStart()
+        invalidate()
+      }, IDLE_DELAY_MS)
+    }
+    const activity = (event: Event) => {
+      if (event instanceof PointerEvent) {
+        if (event.type === 'pointerdown') pointers.add(event.pointerId)
+        if (event.type === 'pointerup' || event.type === 'pointercancel')
+          pointers.delete(event.pointerId)
+      }
+      if (event instanceof KeyboardEvent) {
+        if (event.type === 'keydown') heldKeys.add(event.code)
+        else heldKeys.delete(event.code)
+      }
+      if ((event.type === 'blur' && event.target === window) || document.hidden) {
+        pointers.clear()
+        heldKeys.clear()
+      }
+      // Capture runs before camera picking or UI handlers, so the first new gesture
+      // uses the reset camera rather than a stale point from the idle orbit.
+      stopIdle()
+      schedule()
+    }
+    const events = [
+      'pointermove',
+      'pointerdown',
+      'pointerup',
+      'pointercancel',
+      'keydown',
+      'keyup',
+      'wheel',
+      'click',
+      'contextmenu',
+      'scroll',
+      'resize',
+      'focus',
+      'blur',
+      'focusin',
+      'focusout',
+    ]
+    for (const event of events)
+      window.addEventListener(event, activity, { capture: true, passive: true })
+    document.addEventListener('visibilitychange', activity)
+    schedule()
+    return () => {
+      window.clearTimeout(timer)
+      for (const event of events) window.removeEventListener(event, activity, true)
+      document.removeEventListener('visibilitychange', activity)
+      stopIdle()
+    }
+  }, [idleEnabled, reducedMotion, flight, host, invalidate, onIdleStart, stopIdle])
 
   const reset = () => {
     keys.current.clear()
@@ -391,6 +539,31 @@ export default function FreeFlightControls({
   }, [camera, flight, host, gl, scene, homeDistance, reducedMotion, invalidate])
 
   useFrame((_, delta) => {
+    const tour = idle.current
+    if (tour) {
+      const elapsed = Math.max(0, (performance.now() - tour.startedAt) / 1000)
+      const angle = Math.max(0, elapsed - 1.2) * IDLE_ORBIT_SPEED
+      const pose = overviewPose(
+        overview,
+        size.width,
+        size.height,
+        camera instanceof PerspectiveCamera ? camera.fov : 42,
+        angle,
+        tour.insets
+      )
+      const t = Math.min(1, elapsed / 1.2)
+      const eased = t * t * (3 - 2 * t)
+      flight.position.lerpVectors(tour.position, pose.position, eased)
+      flight.orientation.slerpQuaternions(tour.orientation, pose.orientation, eased)
+      flight.focus.copy(pose.focus)
+      flight.destination.copy(flight.position)
+      flight.aim.copy(flight.orientation)
+      const far = pose.distance + overview.radius * 2 + 100
+      if (camera.far < far) {
+        camera.far = far
+        camera.updateProjectionMatrix()
+      }
+    }
     const pressed = (code: string) => (keys.current.has(code) ? 1 : 0)
     const dt = Math.min(Math.max(delta, 0), 0.1)
     const direction = new Vector3(
@@ -412,7 +585,7 @@ export default function FreeFlightControls({
       pitch = pressed('ArrowUp') - pressed('ArrowDown')
     if ((yaw || pitch) && gestureMode.current === 'idle')
       flight.turn(yaw * dt * 1.3, pitch * dt * 1.3)
-    const moving = flight.step(delta, reducedMotion)
+    const moving = !!idle.current || flight.step(delta, reducedMotion)
     camera.position.copy(flight.position)
     camera.quaternion.copy(flight.orientation)
     camera.updateMatrixWorld()
@@ -422,6 +595,7 @@ export default function FreeFlightControls({
     gl.domElement.dataset.cameraQuaternion = JSON.stringify(flight.orientation.toArray())
     gl.domElement.dataset.cameraFocus = JSON.stringify(flight.focus.toArray())
     gl.domElement.dataset.cameraMoving = String(moving)
+    gl.domElement.dataset.cameraIdle = String(!!idle.current)
     gl.domElement.dataset.navigationRadius = String(radius)
     if (moving || keys.current.size) invalidate()
   }, -1)

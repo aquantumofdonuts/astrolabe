@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, Download, Plus, Trash2, Upload } from 'lucide-react'
+import { Check, Download, Plus, Save, Trash2, Upload } from 'lucide-react'
+import type { SharedCatalog } from '../lib/liveCatalog'
 import { downloadCatalog, iconNames, uniqueId, validateCatalog } from '../lib/catalog'
 import type { Catalog, Category, Instrument } from '../lib/catalog'
 import { Icon } from './Icon'
@@ -9,16 +10,26 @@ import { MAX_CATALOG_BYTES, NODE_IMAGE_ACCEPT, normalizeNodeImage } from '../lib
 
 export default function CatalogStudio({
   catalog,
+  revision,
+  onSave,
   onApply,
   onReset,
   onClose,
 }: {
   catalog: Catalog
+  revision: string | null
+  onSave: (catalog: Catalog, revision: string) => Promise<SharedCatalog>
   onApply: (catalog: Catalog) => boolean
   onReset: () => void
   onClose: () => void
 }) {
   const [draft, setDraft] = useState<Catalog>(() => structuredClone(catalog))
+  const [baseRevision, setBaseRevision] = useState(revision)
+  const [saving, setSaving] = useState(false)
+  // Keep the revision belonging to this draft, even if another browser publishes edits.
+  useEffect(() => {
+    if (baseRevision === null && revision) setBaseRevision(revision)
+  }, [baseRevision, revision])
   const [tab, setTab] = useState<'sites' | 'categories'>('sites')
   const [selected, setSelected] = useState(catalog.sites[0]?.id || '')
   const [selectedCategory, setSelectedCategory] = useState(catalog.categories[0].id)
@@ -48,10 +59,11 @@ export default function CatalogStudio({
     return () => window.removeEventListener('beforeunload', warn)
   }, [dirty])
   const guardedClose = () => {
+    if (saving) return
     if (
       !dirty ||
       window.confirm(
-        'Discard unapplied catalog changes? Export or apply your preview to keep them.'
+        'Discard unapplied catalog changes? Save, export, or apply your preview to keep them.'
       )
     )
       onClose()
@@ -81,7 +93,7 @@ export default function CatalogStudio({
         ...current,
         sites: current.sites.map((entry) => (entry.id === id ? { ...entry, image } : entry)),
       }))
-      setNotice('Image ready. Apply local preview to see it on the globe.')
+      setNotice('Image ready. Save or apply local preview to see it on the globe.')
     } catch (error) {
       if (request === imageRequest.current) setError((error as Error).message)
     } finally {
@@ -195,11 +207,28 @@ export default function CatalogStudio({
       setSelected(valid.sites[0]?.id || '')
       setSelectedCategory(valid.categories[0].id)
       setError('')
-      setNotice('Catalog imported into the editor. Apply a preview or export when ready.')
+      setNotice('Catalog imported into the editor. Save, apply a preview, or export when ready.')
     } catch (err) {
       setError((err as Error).message)
     }
     if (fileInput.current) fileInput.current.value = ''
+  }
+  const save = async () => {
+    if (!baseRevision || saving) return
+    try {
+      const valid = validateCatalog(draft)
+      setSaving(true)
+      setError('')
+      setNotice('')
+      const shared = await onSave(valid, baseRevision)
+      setDraft(shared.catalog)
+      setBaseRevision(shared.revision)
+      setNotice('Saved. The shared catalog is live in all connected browsers.')
+    } catch (error) {
+      setError((error as Error).message)
+    } finally {
+      setSaving(false)
+    }
   }
   return (
     <Modal
@@ -208,411 +237,435 @@ export default function CatalogStudio({
       onClose={guardedClose}
       className="studio-modal"
     >
-      <div className="studio-notice">
-        <span className="tiny-dot" />
-        Browser preview<span>Export to update the shared catalog.</span>
-      </div>
-      <div className="studio-toolbar">
-        <div className="segmented">
-          <button
-            className={tab === 'sites' ? 'active' : ''}
-            onClick={() => {
-              setTab('sites')
-              setConfirmDelete(false)
-            }}
-          >
-            Instruments <span>{draft.sites.length}</span>
-          </button>
-          <button
-            className={tab === 'categories' ? 'active' : ''}
-            onClick={() => {
-              setTab('categories')
-              setConfirmDelete(false)
-            }}
-          >
-            Categories
-          </button>
+      <fieldset className="studio-save-lock" disabled={saving} aria-busy={saving}>
+        <div className="studio-notice">
+          <span className="tiny-dot" />
+          {revision ? 'Live catalog' : 'Browser preview'}
+          <span>
+            {revision
+              ? 'Save to publish changes immediately.'
+              : 'Export to update the shared catalog.'}
+          </span>
         </div>
-        <div className="button-group">
-          <button className="text-button" onClick={() => fileInput.current?.click()}>
-            <Upload size={15} />
-            Import
-          </button>
-          <button
-            className="text-button"
-            disabled={imageBusy}
-            onClick={() =>
-              perform((valid) => {
-                downloadCatalog(valid)
-                setNotice(
-                  'Exported catalog.json. Replace public/catalog.json and redeploy to publish for everyone.'
-                )
-              })
-            }
-          >
-            <Download size={15} />
-            Export
-          </button>
-          <input
-            ref={fileInput}
-            aria-label="Import catalog"
-            type="file"
-            accept=".json,application/json"
-            hidden
-            onChange={(event) => void importFile(event.target.files?.[0])}
-          />
+        <div className="studio-toolbar">
+          <div className="segmented">
+            <button
+              className={tab === 'sites' ? 'active' : ''}
+              onClick={() => {
+                setTab('sites')
+                setConfirmDelete(false)
+              }}
+            >
+              Instruments <span>{draft.sites.length}</span>
+            </button>
+            <button
+              className={tab === 'categories' ? 'active' : ''}
+              onClick={() => {
+                setTab('categories')
+                setConfirmDelete(false)
+              }}
+            >
+              Categories
+            </button>
+          </div>
+          <div className="button-group">
+            <button className="text-button" onClick={() => fileInput.current?.click()}>
+              <Upload size={15} />
+              Import
+            </button>
+            <button
+              className="text-button"
+              disabled={imageBusy}
+              onClick={() =>
+                perform((valid) => {
+                  downloadCatalog(valid)
+                  setNotice(
+                    'Exported catalog.json. Replace public/catalog.json and redeploy to publish for everyone.'
+                  )
+                })
+              }
+            >
+              <Download size={15} />
+              Export
+            </button>
+            <input
+              ref={fileInput}
+              aria-label="Import catalog"
+              type="file"
+              accept=".json,application/json"
+              hidden
+              onChange={(event) => void importFile(event.target.files?.[0])}
+            />
+          </div>
         </div>
-      </div>
-      <div className="studio-body">
-        <div className="studio-list">
-          <button
-            className="add-instrument"
-            onClick={add}
-            disabled={tab === 'sites' ? draft.sites.length >= 200 : draft.categories.length >= 12}
-          >
-            <Plus size={16} />
-            Add {tab === 'sites' ? 'instrument' : 'category'}
-          </button>
-          {tab === 'sites'
-            ? draft.sites.map((entry) => (
-                <button
-                  key={entry.id}
-                  className={`studio-entry ${entry.id === selected ? 'active' : ''}`}
-                  onClick={() => {
-                    setSelected(entry.id)
-                    setConfirmDelete(false)
-                  }}
-                >
-                  <InstrumentIcon site={entry} size={17} />
-                  <span>{entry.name || 'Untitled'}</span>
-                  {!entry.url && <small>DEMO</small>}
-                </button>
-              ))
-            : draft.categories.map((entry) => (
-                <button
-                  key={entry.id}
-                  className={`studio-entry ${entry.id === selectedCategory ? 'active' : ''}`}
-                  onClick={() => {
-                    setSelectedCategory(entry.id)
-                    setConfirmDelete(false)
-                  }}
-                >
-                  <span className="category-dot" style={{ background: entry.color }} />
-                  <span>{entry.name || 'Untitled'}</span>
-                </button>
-              ))}
-        </div>
-        <div className="studio-form">
-          {tab === 'sites' && site ? (
-            <>
-              <div className="form-section-title">
-                <InstrumentIcon site={site} size={25} />
-                <div>
-                  <h3>Instrument details</h3>
-                  <small>ID · {site.id}</small>
-                </div>
-              </div>
-              <label>
-                Name
-                <input
-                  value={site.name}
-                  maxLength={80}
-                  onChange={(event) => updateSite({ name: event.target.value })}
-                />
-              </label>
-              <label>
-                Description
-                <textarea
-                  aria-label="Description"
-                  value={site.description}
-                  maxLength={300}
-                  rows={3}
-                  onChange={(event) => updateSite({ description: event.target.value })}
-                />
-                <small>Explain what someone can accomplish here.</small>
-              </label>
-              <div className="form-row">
-                <label>
-                  Category
-                  <select
-                    aria-label="Category"
-                    value={site.category}
-                    onChange={(event) => updateSite({ category: event.target.value })}
+        <div className="studio-body">
+          <div className="studio-list">
+            <button
+              className="add-instrument"
+              onClick={add}
+              disabled={tab === 'sites' ? draft.sites.length >= 200 : draft.categories.length >= 12}
+            >
+              <Plus size={16} />
+              Add {tab === 'sites' ? 'instrument' : 'category'}
+            </button>
+            {tab === 'sites'
+              ? draft.sites.map((entry) => (
+                  <button
+                    key={entry.id}
+                    className={`studio-entry ${entry.id === selected ? 'active' : ''}`}
+                    onClick={() => {
+                      setSelected(entry.id)
+                      setConfirmDelete(false)
+                    }}
                   >
-                    {draft.categories.map((entry) => (
-                      <option key={entry.id} value={entry.id}>
-                        {entry.name}
-                      </option>
-                    ))}
-                  </select>
+                    <InstrumentIcon site={entry} size={17} />
+                    <span>{entry.name || 'Untitled'}</span>
+                    {!entry.url && <small>DEMO</small>}
+                  </button>
+                ))
+              : draft.categories.map((entry) => (
+                  <button
+                    key={entry.id}
+                    className={`studio-entry ${entry.id === selectedCategory ? 'active' : ''}`}
+                    onClick={() => {
+                      setSelectedCategory(entry.id)
+                      setConfirmDelete(false)
+                    }}
+                  >
+                    <span className="category-dot" style={{ background: entry.color }} />
+                    <span>{entry.name || 'Untitled'}</span>
+                  </button>
+                ))}
+          </div>
+          <div className="studio-form">
+            {tab === 'sites' && site ? (
+              <>
+                <div className="form-section-title">
+                  <InstrumentIcon site={site} size={25} />
+                  <div>
+                    <h3>Instrument details</h3>
+                    <small>ID · {site.id}</small>
+                  </div>
+                </div>
+                <label>
+                  Name
+                  <input
+                    value={site.name}
+                    maxLength={80}
+                    onChange={(event) => updateSite({ name: event.target.value })}
+                  />
                 </label>
                 <label>
-                  Icon
-                  <select
-                    aria-label="Icon"
-                    value={site.icon}
-                    onChange={(event) =>
-                      updateSite({ icon: event.target.value as Instrument['icon'] })
-                    }
-                  >
-                    {iconNames.map((icon) => (
-                      <option key={icon}>{icon}</option>
-                    ))}
-                  </select>
+                  Description
+                  <textarea
+                    aria-label="Description"
+                    value={site.description}
+                    maxLength={300}
+                    rows={3}
+                    onChange={(event) => updateSite({ description: event.target.value })}
+                  />
+                  <small>Explain what someone can accomplish here.</small>
                 </label>
-              </div>
-              <section className="node-image-editor" aria-label="Globe image">
-                <div className="node-image-preview">
-                  {site.image ? (
-                    <img src={site.image} alt={`${site.name} globe image`} />
-                  ) : (
-                    <span>No image assigned</span>
-                  )}
-                </div>
-                <div>
+                <div className="form-row">
                   <label>
-                    Globe image
-                    <input
-                      key={site.id}
-                      aria-label="Upload globe image"
-                      type="file"
-                      accept={NODE_IMAGE_ACCEPT}
-                      disabled={imageBusy}
-                      onChange={(event) => {
-                        const file = event.target.files?.[0]
-                        event.target.value = ''
-                        void uploadImage(file)
-                      }}
-                    />
-                  </label>
-                  <p className="form-help">
-                    PNG, JPEG, WebP, GIF, AVIF, BMP or ICO · up to 10 MB. Your image wraps around a
-                    globe with night-side lights. Animated images use a still frame.
-                  </p>
-                  {imageBusy && <p role="status">Preparing image…</p>}
-                  {site.image && (
-                    <button
-                      className="text-button"
-                      disabled={imageBusy}
-                      onClick={() => updateSite({ image: undefined })}
+                    Category
+                    <select
+                      aria-label="Category"
+                      value={site.category}
+                      onChange={(event) => updateSite({ category: event.target.value })}
                     >
-                      Remove globe image
-                    </button>
-                  )}
-                  {draft.sites.some((entry) => entry.id !== site.id && entry.image) && (
+                      {draft.categories.map((entry) => (
+                        <option key={entry.id} value={entry.id}>
+                          {entry.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Icon
+                    <select
+                      aria-label="Icon"
+                      value={site.icon}
+                      onChange={(event) =>
+                        updateSite({ icon: event.target.value as Instrument['icon'] })
+                      }
+                    >
+                      {iconNames.map((icon) => (
+                        <option key={icon}>{icon}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <section className="node-image-editor" aria-label="Globe image">
+                  <div className="node-image-preview">
+                    {site.image ? (
+                      <img src={site.image} alt={`${site.name} globe image`} />
+                    ) : (
+                      <span>No image assigned</span>
+                    )}
+                  </div>
+                  <div>
                     <label>
-                      Use another node’s image
-                      <select
-                        aria-label="Use another node’s image"
-                        value=""
+                      Globe image
+                      <input
+                        key={site.id}
+                        aria-label="Upload globe image"
+                        type="file"
+                        accept={NODE_IMAGE_ACCEPT}
                         disabled={imageBusy}
                         onChange={(event) => {
-                          const source = draft.sites.find(
-                            (entry) => entry.id === event.target.value
-                          )
-                          if (source?.image) updateSite({ image: source.image })
+                          const file = event.target.files?.[0]
+                          event.target.value = ''
+                          void uploadImage(file)
                         }}
-                      >
-                        <option value="">Choose an existing image</option>
-                        {draft.sites
-                          .filter((entry) => entry.id !== site.id && entry.image)
-                          .map((entry) => (
-                            <option key={entry.id} value={entry.id}>
-                              {entry.name}
-                            </option>
-                          ))}
-                      </select>
+                      />
                     </label>
-                  )}
-                </div>
-              </section>
-              <label>
-                <span>Website URL</span>
-                <input
-                  aria-label="Website URL"
-                  type="url"
-                  value={site.url || ''}
-                  placeholder="https://tools.your-company.com"
-                  onChange={(event) => updateSite({ url: event.target.value || null })}
-                />
-                <small>HTTP or HTTPS. Leave blank to show an explicit demo preview.</small>
-              </label>
-              <label>
-                <span>Search keywords</span>
-                <input
-                  aria-label="Search keywords"
-                  value={site.tags.join(', ')}
-                  placeholder="switch, backup, network, ncm"
-                  onChange={(event) =>
-                    updateSite({
-                      tags: event.target.value.split(',').map((tag) => tag.trimStart()),
-                    })
-                  }
-                  onBlur={() =>
-                    updateSite({ tags: site.tags.map((tag) => tag.trim()).filter(Boolean) })
-                  }
-                />
-                <small>
-                  Separate keywords with commas. Include the words your team actually uses.
-                </small>
-              </label>
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={site.featured}
-                  onChange={(event) => updateSite({ featured: event.target.checked })}
-                />
-                Show in Quick launch
-              </label>
-            </>
-          ) : tab === 'categories' && category ? (
-            <>
-              <div className="form-section-title" style={{ color: category.color }}>
-                <Icon name={category.icon} size={25} />
-                <div>
-                  <h3>Category details</h3>
-                  <small>ID · {category.id}</small>
-                </div>
-              </div>
-              <label>
-                Category name
-                <input
-                  value={category.name}
-                  maxLength={40}
-                  onChange={(event) => updateCategory({ name: event.target.value })}
-                />
-              </label>
-              <label>
-                Category description
-                <input
-                  value={category.description}
-                  maxLength={160}
-                  onChange={(event) => updateCategory({ description: event.target.value })}
-                />
-              </label>
-              <div className="form-row">
-                <label>
-                  Color
-                  <div className="color-field">
-                    <input
-                      aria-label="Category color"
-                      type="color"
-                      value={category.color}
-                      onChange={(event) => updateCategory({ color: event.target.value })}
-                    />
-                    <span>{category.color}</span>
+                    <p className="form-help">
+                      PNG, JPEG, WebP, GIF, AVIF, BMP or ICO · up to 10 MB. Your image wraps around
+                      a globe with night-side lights. Animated images use a still frame.
+                    </p>
+                    {imageBusy && <p role="status">Preparing image…</p>}
+                    {site.image && (
+                      <button
+                        className="text-button"
+                        disabled={imageBusy}
+                        onClick={() => updateSite({ image: undefined })}
+                      >
+                        Remove globe image
+                      </button>
+                    )}
+                    {draft.sites.some((entry) => entry.id !== site.id && entry.image) && (
+                      <label>
+                        Use another node’s image
+                        <select
+                          aria-label="Use another node’s image"
+                          value=""
+                          disabled={imageBusy}
+                          onChange={(event) => {
+                            const source = draft.sites.find(
+                              (entry) => entry.id === event.target.value
+                            )
+                            if (source?.image) updateSite({ image: source.image })
+                          }}
+                        >
+                          <option value="">Choose an existing image</option>
+                          {draft.sites
+                            .filter((entry) => entry.id !== site.id && entry.image)
+                            .map((entry) => (
+                              <option key={entry.id} value={entry.id}>
+                                {entry.name}
+                              </option>
+                            ))}
+                        </select>
+                      </label>
+                    )}
                   </div>
+                </section>
+                <label>
+                  <span>Website URL</span>
+                  <input
+                    aria-label="Website URL"
+                    type="url"
+                    value={site.url || ''}
+                    placeholder="https://tools.your-company.com"
+                    onChange={(event) => updateSite({ url: event.target.value || null })}
+                  />
+                  <small>HTTP or HTTPS. Leave blank to show an explicit demo preview.</small>
                 </label>
                 <label>
-                  Category icon
-                  <select
-                    aria-label="Category icon"
-                    value={category.icon}
+                  <span>Search keywords</span>
+                  <input
+                    aria-label="Search keywords"
+                    value={site.tags.join(', ')}
+                    placeholder="switch, backup, network, ncm"
                     onChange={(event) =>
-                      updateCategory({ icon: event.target.value as Category['icon'] })
+                      updateSite({
+                        tags: event.target.value.split(',').map((tag) => tag.trimStart()),
+                      })
                     }
-                  >
-                    {iconNames.map((icon) => (
-                      <option key={icon}>{icon}</option>
-                    ))}
-                  </select>
+                    onBlur={() =>
+                      updateSite({ tags: site.tags.map((tag) => tag.trim()).filter(Boolean) })
+                    }
+                  />
+                  <small>
+                    Separate keywords with commas. Include the words your team actually uses.
+                  </small>
                 </label>
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={site.featured}
+                    onChange={(event) => updateSite({ featured: event.target.checked })}
+                  />
+                  Show in Quick launch
+                </label>
+              </>
+            ) : tab === 'categories' && category ? (
+              <>
+                <div className="form-section-title" style={{ color: category.color }}>
+                  <Icon name={category.icon} size={25} />
+                  <div>
+                    <h3>Category details</h3>
+                    <small>ID · {category.id}</small>
+                  </div>
+                </div>
+                <label>
+                  Category name
+                  <input
+                    value={category.name}
+                    maxLength={40}
+                    onChange={(event) => updateCategory({ name: event.target.value })}
+                  />
+                </label>
+                <label>
+                  Category description
+                  <input
+                    value={category.description}
+                    maxLength={160}
+                    onChange={(event) => updateCategory({ description: event.target.value })}
+                  />
+                </label>
+                <div className="form-row">
+                  <label>
+                    Color
+                    <div className="color-field">
+                      <input
+                        aria-label="Category color"
+                        type="color"
+                        value={category.color}
+                        onChange={(event) => updateCategory({ color: event.target.value })}
+                      />
+                      <span>{category.color}</span>
+                    </div>
+                  </label>
+                  <label>
+                    Category icon
+                    <select
+                      aria-label="Category icon"
+                      value={category.icon}
+                      onChange={(event) =>
+                        updateCategory({ icon: event.target.value as Category['icon'] })
+                      }
+                    >
+                      {iconNames.map((icon) => (
+                        <option key={icon}>{icon}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <p className="form-help">
+                  Categories create orbital groups automatically. Names, icons, and colors appear
+                  throughout the directory and astrolabe.
+                </p>
+              </>
+            ) : (
+              <div className="empty-state">
+                <h3>No instruments</h3>
+                <p>Add your first instrument to get started.</p>
               </div>
-              <p className="form-help">
-                Categories create orbital groups automatically. Names, icons, and colors appear
-                throughout the directory and astrolabe.
-              </p>
-            </>
-          ) : (
-            <div className="empty-state">
-              <h3>No instruments</h3>
-              <p>Add your first instrument to get started.</p>
-            </div>
-          )}
-          {(tab === 'sites' ? site : category) && (
-            <div className="delete-row">
-              {confirmDelete ? (
-                <>
-                  <span>Remove this {tab === 'sites' ? 'instrument' : 'category'}?</span>
-                  <button className="danger-button" onClick={remove}>
-                    Remove
+            )}
+            {(tab === 'sites' ? site : category) && (
+              <div className="delete-row">
+                {confirmDelete ? (
+                  <>
+                    <span>Remove this {tab === 'sites' ? 'instrument' : 'category'}?</span>
+                    <button className="danger-button" onClick={remove}>
+                      Remove
+                    </button>
+                    <button className="text-button" onClick={() => setConfirmDelete(false)}>
+                      Keep
+                    </button>
+                  </>
+                ) : (
+                  <button className="text-button danger" onClick={() => setConfirmDelete(true)}>
+                    <Trash2 size={14} />
+                    Remove {tab === 'sites' ? 'instrument' : 'category'}
                   </button>
-                  <button className="text-button" onClick={() => setConfirmDelete(false)}>
-                    Keep
-                  </button>
-                </>
-              ) : (
-                <button className="text-button danger" onClick={() => setConfirmDelete(true)}>
-                  <Trash2 size={14} />
-                  Remove {tab === 'sites' ? 'instrument' : 'category'}
-                </button>
-              )}
-            </div>
-          )}
+                )}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
-      <div className="studio-footer">
-        {error && (
-          <p className="form-error" role="alert">
-            {error}
-          </p>
-        )}
-        {notice && (
-          <p className="form-success" role="status">
-            <Check size={15} />
-            {notice}
-          </p>
-        )}
-        <div className="studio-publish-info">
-          <label>
-            Workspace name
-            <input
-              aria-label="Workspace name"
-              value={draft.title}
-              maxLength={80}
-              onChange={(event) =>
-                setDraft((current) => ({ ...current, title: event.target.value }))
+        <div className="studio-footer">
+          {error && (
+            <p className="form-error" role="alert">
+              {error}
+            </p>
+          )}
+          {notice && (
+            <p className="form-success" role="status">
+              <Check size={15} />
+              {notice}
+            </p>
+          )}
+          <div className="studio-publish-info">
+            <label>
+              Workspace name
+              <input
+                aria-label="Workspace name"
+                value={draft.title}
+                maxLength={80}
+                onChange={(event) =>
+                  setDraft((current) => ({ ...current, title: event.target.value }))
+                }
+              />
+            </label>
+            <button
+              className="secondary-button"
+              disabled={imageBusy}
+              onClick={() =>
+                perform((valid) => {
+                  const persisted = onApply(valid)
+                  setDraft(valid)
+                  setNotice(
+                    persisted
+                      ? 'Preview applied to this browser. Save or export your catalog to publish it for everyone.'
+                      : 'Preview applied for this session only. Browser storage is full or unavailable; export your catalog to keep your images and changes.'
+                  )
+                })
               }
-            />
-          </label>
-          <button
-            className="primary-button"
-            disabled={imageBusy}
-            onClick={() =>
-              perform((valid) => {
-                const persisted = onApply(valid)
-                setDraft(valid)
-                setNotice(
-                  persisted
-                    ? 'Preview applied to this browser. Export your catalog to publish it for everyone.'
-                    : 'Preview applied for this session only. Browser storage is full or unavailable; export your catalog to keep your images and changes.'
-                )
-              })
-            }
-          >
-            Apply local preview
-            <Check size={16} />
-          </button>
-        </div>
-        <div className="studio-reset">
-          {confirmReset ? (
-            <>
-              <span>Restore the deployed catalog and discard this browser’s preview?</span>
-              <button className="text-button danger" onClick={onReset}>
-                Restore catalog
-              </button>
-              <button className="text-button" onClick={() => setConfirmReset(false)}>
-                Cancel
-              </button>
-            </>
-          ) : (
-            <button className="text-button" onClick={() => setConfirmReset(true)}>
-              Restore deployed catalog
+            >
+              Apply local preview
+              <Check size={16} />
             </button>
-          )}
-          <span>Changes stay in this browser until exported.</span>
+            <button
+              className="primary-button"
+              disabled={imageBusy || saving || !baseRevision}
+              title={
+                baseRevision
+                  ? 'Update the shared catalog for everyone'
+                  : 'Live saving requires the Astrolabe server. Use export on static hosting.'
+              }
+              onClick={() => void save()}
+            >
+              {saving ? 'Saving…' : 'Save'}
+              <Save size={16} />
+            </button>
+          </div>
+          <div className="studio-reset">
+            {confirmReset ? (
+              <>
+                <span>Restore the deployed catalog and discard this browser’s preview?</span>
+                <button className="text-button danger" onClick={onReset}>
+                  Restore catalog
+                </button>
+                <button className="text-button" onClick={() => setConfirmReset(false)}>
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <button className="text-button" onClick={() => setConfirmReset(true)}>
+                Restore deployed catalog
+              </button>
+            )}
+            <span>
+              {revision
+                ? 'Save publishes for everyone. Preview stays in this browser.'
+                : 'Live save unavailable on static hosting. Use export to publish.'}
+            </span>
+          </div>
         </div>
-      </div>
+      </fieldset>
     </Modal>
   )
 }

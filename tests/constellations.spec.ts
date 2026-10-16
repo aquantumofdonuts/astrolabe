@@ -13,6 +13,9 @@ for (const [width, height] of [
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.addInitScript(() => localStorage.setItem('astrolabe.economical', 'true'))
     await page.goto('/')
+    await expect(page.locator('.scene-experience')).toHaveAttribute('data-scene-state', 'ready', {
+      timeout: 30000,
+    })
     await expect(page.locator('canvas')).toHaveAttribute('data-camera-moving', 'false')
     await page.evaluate(() => document.fonts.ready)
     const labels = page.locator('.projected-label:not(.core-projected-label)')

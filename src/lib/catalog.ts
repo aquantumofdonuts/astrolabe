@@ -1,4 +1,4 @@
-import { validateNodeImage } from './nodeImages'
+import { validateNodeImage } from './nodeImages.ts'
 
 export type IconName =
   | 'radar'

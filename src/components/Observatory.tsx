@@ -10,9 +10,11 @@ import FreeFlightControls from './FreeFlightControls'
 import { selectionTarget } from '../lib/focus'
 import type { FocusRequest } from '../lib/focus'
 import CelestialDestination from './CelestialBodies'
+import InstrumentEmphasis from './InstrumentEmphasis'
 import SystemLife, { DestinationGlow, StarField } from './SystemLife'
 import { destinationRadius, projectDestination } from '../lib/hud'
 import { DeepSpace, ObservatoryLighting, StellarEngine } from './OrbitalArchitecture'
+import { systemOverview } from '../lib/overview'
 
 type Props = {
   catalog: Catalog
@@ -28,6 +30,9 @@ type Props = {
   onCategory: (id: string) => void
   onSelect: (id: string) => void
   onUnavailable: () => void
+  onReady: () => void
+  idleEnabled: boolean
+  onIdleStart: () => void
 }
 
 class SceneBoundary extends Component<
@@ -81,10 +86,15 @@ function Scene({
     () => new Map(props.catalog.sites.map((site) => [site.id, site.image])),
     [props.catalog.sites]
   )
+  const brightness = useMemo(
+    () => new Map(props.catalog.sites.map((site) => [site.id, { value: 1 }])),
+    [props.catalog.sites]
+  )
   const target = useMemo(
     () => selectionTarget(props.catalog, stations, props.visit),
     [props.catalog, stations, props.visit]
   )
+  const overview = useMemo(() => systemOverview(props.catalog, stations), [props.catalog, stations])
   const anchors = useMemo(
     () => [
       { id: '__core', position: [0, -4.7, -2] as Point3 },
@@ -103,7 +113,20 @@ function Scene({
     ],
     [stations, images]
   )
-  useFrame(() => {
+  useFrame((_, dt) => {
+    const hasSelection = !!props.selectedId || props.category !== 'all'
+    for (const site of props.catalog.sites) {
+      const uniform = brightness.get(site.id)!
+      const selected = props.selectedId
+        ? props.selectedId === site.id
+        : props.category === site.category
+      const target = hasSelection && !selected ? 0.5 : 1
+      uniform.value = props.reducedMotion
+        ? target
+        : THREE.MathUtils.damp(uniform.value, target, 8, Math.min(dt, 0.1))
+      if (Math.abs(uniform.value - target) < 0.001) uniform.value = target
+      else invalidate() // Selection transitions continue when ambient motion is paused.
+    }
     for (const anchor of anchors) {
       const label = labels.current.get(anchor.id)
       if (!label) continue
@@ -141,7 +164,8 @@ function Scene({
       const dim = anchor.id.startsWith('__category:')
         ? props.category !== 'all' && props.category !== anchor.id.slice(11)
         : anchor.id !== '__core' && !props.visibleIds.includes(anchor.id)
-      label.style.opacity = visible ? (dim ? '0.18' : '1') : '0'
+      const emphasis = brightness.get(anchor.id)?.value ?? 1
+      label.style.opacity = visible ? (dim ? '0.18' : String(0.3 + emphasis * 0.7)) : '0'
       label.style.visibility = visible ? 'visible' : 'hidden'
     }
   })
@@ -149,7 +173,11 @@ function Scene({
     <>
       <color attach="background" args={['#060d14']} />
       <fog attach="fog" args={['#060d14', 75, 230]} />
-      <ObservatoryLighting economical={props.economical} />
+      <ObservatoryLighting
+        economical={props.economical}
+        onReady={props.onReady}
+        onUnavailable={props.onUnavailable}
+      />
       <StarField economical={props.economical} paused={props.paused || props.reducedMotion} />
       <DeepSpace radius={Math.max(240, homeDistance * 4)} />
       <StellarEngine paused={props.paused || props.reducedMotion} />
@@ -165,7 +193,10 @@ function Scene({
         return (
           <group key={category.id}>
             {station.instruments.map((instrument, variant) => (
-              <group key={instrument.id}>
+              <InstrumentEmphasis
+                key={`${instrument.id}:${family}:${variant}:${!!images.get(instrument.id)}`}
+                brightness={brightness.get(instrument.id)!}
+              >
                 <group position={instrument.position}>
                   <DestinationGlow
                     color={category.color}
@@ -196,7 +227,7 @@ function Scene({
                   hovered={hovered}
                   paused={props.paused || props.reducedMotion}
                 />
-              </group>
+              </InstrumentEmphasis>
             ))}
           </group>
         )
@@ -210,6 +241,9 @@ function Scene({
         resetKey={props.resetKey}
         zoomRequest={props.zoomRequest}
         reducedMotion={props.reducedMotion}
+        overview={overview}
+        idleEnabled={props.idleEnabled}
+        onIdleStart={props.onIdleStart}
       />
     </>
   )

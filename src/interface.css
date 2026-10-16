@@ -902,3 +902,132 @@
 .cinematic .studio-notice .tiny-dot {
   background: var(--ui-accent);
 }
+
+/* Keep startup feedback independent of the WebGL renderer and its first frame. */
+.cinematic .scene-experience,
+.cinematic .scene-content {
+  position: absolute;
+  inset: 0;
+}
+.cinematic .scene-content {
+  opacity: 0;
+  transition: opacity 0.55s ease-out;
+}
+.cinematic .scene-experience[data-scene-state='ready'] .scene-content {
+  opacity: 1;
+}
+.cinematic .scene-content .observatory-renderer {
+  animation: none;
+}
+.cinematic .scene-loading {
+  z-index: 6;
+  gap: 22px;
+  padding: 28px;
+  text-align: center;
+  color: var(--ui-text);
+  background:
+    radial-gradient(ellipse at 50% 45%, #16344e70, transparent 55%),
+    radial-gradient(ellipse at 75% 70%, #30224435, transparent 55%), #060d14;
+}
+.cinematic .scene-loading h2 {
+  margin: 0 0 10px;
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+.cinematic .scene-loading p {
+  max-width: 290px;
+  margin: 0 auto;
+  color: var(--ui-muted);
+  font-size: 12px;
+  line-height: 1.7;
+  letter-spacing: 0;
+}
+.cinematic .scene-loading .secondary-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 14px;
+}
+.loading-system {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 170px;
+  height: 170px;
+  margin-bottom: 4px;
+}
+.loading-star {
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff8dc, #efc789 50%, #a57848);
+  box-shadow:
+    0 0 20px #efc78955,
+    0 0 70px #efc78920;
+}
+.loading-orbit {
+  position: absolute;
+  width: 150px;
+  height: 70px;
+  border: 1px solid #91c7d738;
+  border-top-color: #91c7d78c;
+  border-radius: 50%;
+  transform: rotate(-30deg);
+  animation: loading-orbit 9s linear infinite;
+  will-change: transform;
+}
+.loading-orbit:nth-child(2) {
+  width: 125px;
+  height: 65px;
+  animation-duration: 12s;
+  animation-direction: reverse;
+  animation-delay: -4s;
+}
+.loading-orbit:nth-child(3) {
+  width: 150px;
+  height: 90px;
+  animation-duration: 16s;
+  animation-delay: -8s;
+  border-color: #b49ac52e;
+}
+.loading-orbit::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #b6e9f3;
+  box-shadow: 0 0 12px #91c7d7b3;
+}
+@keyframes loading-orbit {
+  from {
+    transform: rotate(-30deg);
+  }
+  to {
+    transform: rotate(330deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loading-orbit {
+    animation: none;
+  }
+  .loading-orbit:nth-child(2) {
+    transform: rotate(35deg);
+  }
+  .loading-orbit:nth-child(3) {
+    transform: rotate(90deg);
+  }
+  .cinematic .scene-content {
+    transition: none;
+  }
+}
+.studio-save-lock {
+  display: contents;
+}
+.studio-publish-info .secondary-button {
+  align-self: flex-end;
+  white-space: nowrap;
+}
