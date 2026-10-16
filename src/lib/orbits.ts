@@ -9,16 +9,16 @@ export type Constellation = {
   instruments: { id: string; position: Point3; rotation: Point3; scale: number }[]
 }
 
-export const HOME_DISTANCE = 44
+export const HOME_DISTANCE = 52
 
-// Longitude, latitude, and radius: a composed view into a volume, with both near
-// and far hemispheres occupied. These slots stay fixed as the catalog grows.
+// Longitude, latitude, and radius: uneven inner, middle, and outer groups fill
+// both hemispheres without collecting on one shell. Slots stay fixed as the catalog grows.
 const sectors = [
-  [-65, 16, 15],
-  [128, 20, 20],
-  [52, -25, 14.5],
-  [-126, -26, 19],
-  [-169, 36, 22],
+  [-65, 16, 12.8],
+  [128, 20, 25],
+  [52, -25, 18.5],
+  [-126, -26, 31],
+  [175, 26, 36],
 ]
 const tilts: Point3[] = [
   [0.18, -0.3, -0.12],
@@ -40,7 +40,7 @@ export function buildConstellationLayout(catalog: Catalog): Constellation[] {
     const [longitude, latitude, radius] = sectors[index] ?? [
       index * 137.508 + 23,
       Math.asin(2 * fraction(category.id) - 1) * MathUtils.RAD2DEG,
-      20 + fraction(category.id + ':radius') * 7,
+      13 + fraction(category.id + ':radius') * 24,
     ]
     const azimuth = longitude * MathUtils.DEG2RAD,
       elevation = latitude * MathUtils.DEG2RAD

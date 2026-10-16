@@ -15,6 +15,16 @@ it('spreads constellations across both hemispheres with different distances and 
     Math.max(...points.map((point) => point.y)) - Math.min(...points.map((point) => point.y))
   ).toBeGreaterThan(20)
   expect(new Set(points.map((point) => point.length().toFixed(2))).size).toBe(systems.length)
+  const radii = points.map((point) => point.length()).sort((a, b) => a - b)
+  // A broad radial range and substantial gaps prevent another narrow orbital shell.
+  expect(radii.at(-1)! / radii[0]).toBeGreaterThan(2.5)
+  for (let index = 1; index < radii.length; index++)
+    expect(radii[index] - radii[index - 1]).toBeGreaterThan(4)
+  const separations = points.flatMap((point, index) =>
+    points.slice(index + 1).map((other) => point.distanceTo(other))
+  )
+  expect(Math.min(...separations)).toBeGreaterThan(23)
+  expect(Math.max(...separations) - Math.min(...separations)).toBeGreaterThan(20)
   // A nonzero tetrahedral volume rules out merely tilting a flat disc.
   const [a, b, c, d] = points
   expect(Math.abs(b.clone().sub(a).cross(c.clone().sub(a)).dot(d.clone().sub(a)))).toBeGreaterThan(

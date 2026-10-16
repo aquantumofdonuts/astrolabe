@@ -1,0 +1,623 @@
+/* Cockpit surfaces sit above the interface layout. Keep the projected scene HUD
+   untouched and spend motion only on deliberate interaction feedback. */
+:root {
+  --ui-bg: #070e18;
+  --ui-surface: #112330;
+  --ui-overlay: #0c1b29f5;
+  --ui-field: #081521;
+  --ui-text: #edf6fa;
+  --ui-secondary: #c0d2df;
+  --ui-muted: #98b0c3;
+  --ui-accent: #99e5f5;
+  --ui-hover: #a0e7ff14;
+  --ui-selected: #83dcff22;
+  --ui-line: #b9e1fa16;
+  --ui-line-strong: #b9e1fa30;
+  --ui-radius: 8px;
+  --ui-shadow: 0 24px 64px #0008, 0 5px 16px #0004, inset 0 1px #e0f6ff14;
+  --hud-action: #ffd59a;
+  --hud-panel: linear-gradient(145deg, #173043f5, #0d1c2bf5 50%, #0a1522fa);
+}
+
+.cinematic :is(button, a, input, textarea, select) {
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+.cinematic :is(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid #b5efff;
+  outline-offset: 3px;
+}
+.cinematic :is(button, a):active:not(:disabled) {
+  transform: translateY(1px);
+}
+.cinematic :is(.orbital-node, .system-label):active {
+  transform: none;
+}
+
+/* The header reads as a single flight console, with a softly lit upper deck. */
+.cinematic .topbar {
+  background:
+    radial-gradient(ellipse at 12% 0%, #29617b33, transparent 55%),
+    linear-gradient(180deg, #142432, #0b1723);
+  border-bottom-color: #dbf4ff0c;
+  box-shadow: inset 0 1px #ccecff0a;
+}
+.cinematic .brand {
+  gap: 11px;
+}
+.cinematic .brand-monogram {
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 25%, #91e5ff40, #173b5266 55%, #0c1d2d);
+  box-shadow:
+    0 0 24px #60c6f31a,
+    inset 0 1px #c4efff40;
+  color: #cff6ff;
+}
+.cinematic .brand > div {
+  font-size: 13px;
+  letter-spacing: 0.19em;
+  text-shadow: 0 0 20px #9ce7ff24;
+}
+.cinematic .workspace-breadcrumb {
+  padding-left: 18px;
+  border-left: 1px solid #c5e6ff1a;
+  color: #b2cadb;
+}
+.cinematic .sidebar {
+  background: linear-gradient(180deg, #0d1b28, #09131edb);
+  border-bottom-color: #a0dfff12;
+  box-shadow: 0 10px 28px #0003;
+}
+.cinematic :is(.collection-nav, .category-nav) {
+  gap: 4px;
+}
+.cinematic :is(.collection-nav, .category-nav) button {
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.015em;
+  text-transform: none;
+  color: #b6cbd9;
+}
+.cinematic .collection-nav button:first-child {
+  padding-left: 10px;
+}
+.cinematic :is(.collection-nav, .category-nav) button.active {
+  background: linear-gradient(135deg, #7bc9e526, #78bdff0c);
+  box-shadow:
+    inset 0 1px #b2e7ff20,
+    0 2px 10px #0002;
+  color: #e5f6ff;
+}
+.cinematic .category-nav button.active {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--category-color) 22%, #10202f),
+    #132330
+  );
+  color: var(--category-color);
+}
+.cinematic .category-nav button::before {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--category-color) 40%, transparent);
+}
+.cinematic :is(.collection-nav, .category-nav) button small {
+  min-width: 16px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  background: #bbdfff0a;
+  color: #b0c8d8;
+}
+.cinematic .studio-button {
+  gap: 7px;
+  min-height: 34px;
+  padding: 6px 10px;
+  background: #b2d9f00a;
+  border-radius: 6px;
+  letter-spacing: 0.025em;
+  color: #b7d1e3;
+}
+.cinematic .studio-button > svg:first-child {
+  display: inline;
+  width: 14px;
+  height: 14px;
+}
+.cinematic .studio-button:hover {
+  background: #b2d9f019;
+}
+
+/* Filled controls and a clear primary action replace outlines on outlines. */
+.cinematic :is(.primary-button, .launch-button) {
+  border-color: #fff0;
+  background: linear-gradient(135deg, #ffe4b8, #efbd80);
+  color: #24202a;
+  box-shadow:
+    0 4px 18px #edb46c1a,
+    inset 0 1px #fff8;
+  font-weight: 700;
+  letter-spacing: 0.055em;
+}
+.cinematic :is(.primary-button, .launch-button):hover:not(:disabled) {
+  background: linear-gradient(135deg, #ffeed1, #ffd69d);
+  color: #201b25;
+  border-color: #fff0;
+  box-shadow:
+    0 5px 24px #edb46c35,
+    inset 0 1px #fff9;
+}
+.cinematic :is(.secondary-button, .add-instrument) {
+  border-color: #b7dfff18;
+  background: linear-gradient(135deg, #244153, #172b3e);
+  color: #d0eeff;
+  box-shadow:
+    inset 0 1px #ddf3ff10,
+    0 3px 10px #0002;
+}
+.cinematic :is(.secondary-button, .add-instrument):hover:not(:disabled) {
+  background: linear-gradient(135deg, #2d5266, #20394d);
+  border-color: #b7dfff35;
+}
+.cinematic .help-button {
+  border-radius: 20px;
+  padding-inline: 15px;
+  min-height: 36px;
+}
+.cinematic :is(.icon-button, .favorite-button, .inspector-close, .clear-search) {
+  border-radius: 6px;
+}
+.cinematic .favorite-button.is-favorite {
+  color: var(--hud-action);
+  background: #f7c48b18;
+}
+.cinematic .favorite-button.is-favorite svg {
+  fill: #f7c48b33;
+}
+.cinematic :is(.view-tabs, .segmented) {
+  padding: 4px;
+  gap: 3px;
+  border: 0;
+  border-radius: 10px;
+  background: #0b1b2bed;
+  box-shadow:
+    inset 0 1px #c0eaff14,
+    0 4px 16px #0003;
+}
+.cinematic :is(.view-tabs > button, .segmented > button) {
+  border-radius: 6px;
+  letter-spacing: 0.025em;
+}
+.cinematic :is(.view-tabs > button, .segmented > button).active {
+  background: linear-gradient(135deg, #d7f2ff, #a0cde1);
+  color: #102532;
+  box-shadow:
+    inset 0 1px #fff9,
+    0 2px 8px #0004;
+  font-weight: 700;
+}
+.cinematic .view-tabs > button > svg {
+  display: inline;
+  margin-right: 6px;
+}
+.cinematic .results-count {
+  color: #b1c9d9;
+  text-shadow: 0 2px 5px #000;
+}
+.cinematic .scene-controls {
+  background: linear-gradient(155deg, #21394be8, #0b1b2aee);
+  border: 1px solid #b8e6ff1f;
+  border-radius: 12px;
+  box-shadow: var(--ui-shadow);
+  padding: 6px;
+  gap: 4px;
+  backdrop-filter: blur(12px);
+}
+.cinematic .scene-controls .icon-button {
+  color: #bfd8e8;
+  background: #c4e8ff08;
+  border: 0;
+  width: 34px;
+  height: 34px;
+}
+.cinematic .scene-controls .icon-button:hover:not(:disabled) {
+  background: #b6e8ff25;
+  color: #effbff;
+  box-shadow: inset 0 1px #d9f7ff25;
+}
+.cinematic .quality-button {
+  border-right: 1px solid #b7e2ff18;
+  border-radius: 0;
+  min-height: 30px;
+  padding-inline: 10px 14px;
+  margin-right: 2px;
+}
+.cinematic .quality-button::before {
+  content: '';
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #a3dded;
+  margin-right: 7px;
+  box-shadow: 0 0 8px #8ce3ff4d;
+}
+
+/* Search remains a conventional input with an unmistakable focused state. */
+.cinematic :is(input, textarea, select, .color-field) {
+  border-color: #c0e0f326;
+  background-color: #07131e;
+  box-shadow: inset 0 2px 5px #0003;
+}
+.cinematic .search-box {
+  height: 40px;
+  border: 1px solid #bfddf31c;
+  border-radius: 10px;
+  background: #07141ed9;
+  box-shadow:
+    inset 0 2px 6px #0004,
+    0 1px #d6f0ff0b;
+}
+.cinematic .search-box:focus-within {
+  border-color: #a0e7ff99;
+  box-shadow:
+    0 0 0 3px #8bdfff12,
+    inset 0 2px 6px #0003;
+}
+.cinematic .search-box input {
+  box-shadow: none;
+}
+.cinematic .search-box kbd {
+  border: 0;
+  background: #a5d5ef10;
+  border-radius: 4px;
+}
+.cinematic :is(.modal, .search-popover, .inspector, .toast) {
+  background: var(--hud-panel);
+  border: 1px solid #c4e6ff24;
+  border-radius: 14px;
+  box-shadow: var(--ui-shadow);
+  backdrop-filter: blur(18px);
+}
+.cinematic .search-popover {
+  overflow: hidden;
+}
+.cinematic .search-popover-heading {
+  background: #8dcaff08;
+  padding-block: 16px;
+}
+.cinematic .search-result {
+  margin-inline: 6px;
+  border-radius: 7px;
+}
+.cinematic :is(.search-result.active, .studio-entry.active) {
+  background: linear-gradient(100deg, #5db8e42e, #5db8e40d);
+  box-shadow: inset 3px 0 #9ce8ff;
+}
+.cinematic .search-result > button:first-child > span {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #b3e3ff0c;
+}
+.cinematic .search-popover-footer {
+  background: #020b142b;
+}
+
+/* The selected tool becomes a target dossier, with one large launch action. */
+.cinematic .inspector {
+  width: 330px;
+  max-height: calc(100dvh - 240px);
+  background:
+    radial-gradient(
+      ellipse at 95% 0%,
+      color-mix(in srgb, var(--accent) 14%, transparent),
+      transparent 55%
+    ),
+    var(--hud-panel);
+  border-top: 2px solid color-mix(in srgb, var(--accent) 65%, #d5efff);
+  animation: hud-reveal 220ms ease-out both;
+}
+.cinematic .inspector-inner {
+  padding: 20px;
+}
+.cinematic .inspector-heading {
+  margin-bottom: 22px;
+  gap: 6px;
+}
+.cinematic .inspector-heading .eyebrow {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: #a7bdcd;
+}
+.cinematic .inspector-close {
+  color: #c4d8e5;
+  padding: 5px;
+}
+.inspector-identity {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.inspector-identity > div {
+  min-width: 0;
+}
+.instrument-emblem {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  flex-shrink: 0;
+  color: var(--accent);
+  border-radius: 50%;
+  background:
+    radial-gradient(
+      circle at 32% 22%,
+      color-mix(in srgb, var(--accent) 25%, transparent),
+      transparent 65%
+    ),
+    #0a1a27;
+  box-shadow:
+    inset 0 1px color-mix(in srgb, var(--accent) 40%, transparent),
+    0 0 25px color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.instrument-emblem::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  border-radius: 50%;
+  border-right-color: transparent;
+  transform: rotate(-35deg);
+  pointer-events: none;
+}
+.cinematic .inspector .category-label {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+.cinematic .inspector h2 {
+  font-size: 25px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+  margin-top: 6px;
+  overflow-wrap: anywhere;
+}
+.cinematic .inspector-description {
+  margin-block: 22px 18px;
+  color: #c3d5e2;
+}
+.cinematic .visit-button {
+  padding: 10px 12px;
+  border: 0 !important;
+  border-radius: 7px;
+  background: #b0d9f00c;
+  color: #b9e1f5;
+}
+.cinematic .launch-button {
+  min-height: 46px;
+}
+.cinematic .inspector-section {
+  padding-top: 16px;
+}
+.cinematic .tags button {
+  border: 0;
+  background: #a9d6f210;
+  border-radius: 5px;
+  padding: 7px 10px;
+}
+.cinematic .inspector-index {
+  display: flex;
+  margin-top: 24px;
+  padding-top: 14px;
+  border-top: 1px solid #b6e0ff12;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: #8faabd;
+}
+
+/* The directory is the same universe, expressed as readable destination cards. */
+.cinematic.catalog-view {
+  background:
+    radial-gradient(ellipse at 5% 25%, #173b573d, transparent 55%),
+    radial-gradient(ellipse at 95% 70%, #3324482e, transparent 55%), #080f19;
+}
+.cinematic.catalog-view .directory-card {
+  position: relative;
+  border: 1px solid #bfdfff16;
+  border-radius: 14px;
+  background:
+    radial-gradient(
+      ellipse at 95% 0%,
+      color-mix(in srgb, var(--accent) 13%, transparent),
+      transparent 65%
+    ),
+    linear-gradient(145deg, #192d3e, #10202f 60%, #0d1a29);
+  box-shadow:
+    inset 0 1px #e1f2ff0b,
+    0 6px 24px #0002;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+.cinematic.catalog-view .directory-card:hover,
+.cinematic.catalog-view .directory-card.selected {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  box-shadow:
+    inset 0 1px #e1f2ff12,
+    0 12px 28px #0004;
+  transform: translateY(-2px);
+}
+.cinematic .directory-card-top {
+  padding-top: 20px;
+}
+.cinematic
+  :is(.directory-card .instrument-icon, .launchpad-icon, .mobile-details-heading .instrument-icon) {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 30% 20%,
+    color-mix(in srgb, var(--accent) 23%, transparent),
+    #0c1a2980 80%
+  );
+  box-shadow: inset 0 1px color-mix(in srgb, var(--accent) 28%, transparent);
+  color: var(--accent);
+}
+.cinematic.catalog-view .directory-card h2 {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin-block: 8px 10px;
+}
+.cinematic .directory-card-footer {
+  background: #06111c4d;
+  border-top-color: #b4daef0a;
+  border-radius: 0 0 14px 14px;
+}
+.cinematic .directory-launch {
+  border-radius: 6px;
+  padding-inline: 10px;
+  background: #a1dfff0a;
+  font-weight: 600;
+}
+.cinematic .launchpad-card {
+  background: linear-gradient(135deg, #172b3ce6, #0d1d2ce6);
+  border-color: #b4daef14;
+  border-radius: 10px;
+  box-shadow: inset 0 1px #c1e9ff0a;
+}
+.cinematic .launchpad-card:hover {
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  background: linear-gradient(135deg, #203b4f, #142b3e);
+}
+.cinematic .launchpad-icon {
+  width: 36px;
+  height: 36px;
+}
+
+/* Dialogs are legible, quiet extensions of the console. */
+.cinematic .modal-heading {
+  background: linear-gradient(100deg, #9bdfff0a, transparent);
+  border-bottom-color: #b4daef12;
+}
+.cinematic .modal-heading h2 {
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+.cinematic .modal::backdrop {
+  background: #030914a8;
+  backdrop-filter: blur(8px);
+}
+.cinematic .studio-footer {
+  background: #07141e99;
+}
+.cinematic .studio-entry {
+  border-radius: 6px;
+}
+.cinematic .studio-list {
+  background: #06101a33;
+}
+.cinematic .mobile-scene-directory {
+  border: 1px solid #c4e6ff1a;
+  border-radius: 10px;
+  background: var(--hud-panel);
+  box-shadow: var(--ui-shadow);
+}
+.cinematic .toast {
+  border-left: 3px solid #99e5f5;
+}
+
+@keyframes hud-reveal {
+  from {
+    opacity: 0;
+    translate: 8px 0;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+@media (max-width: 1150px) {
+  .cinematic :is(.collection-nav, .category-nav) button {
+    font-size: 10px;
+  }
+}
+@media (max-width: 760px) {
+  .cinematic .topbar {
+    gap: 12px;
+  }
+  .cinematic .brand-monogram {
+    width: 32px;
+    height: 32px;
+  }
+  .cinematic .brand-monogram svg {
+    width: 24px;
+    height: 24px;
+  }
+  .cinematic .collection-nav button {
+    padding-inline: 7px;
+  }
+  .cinematic .category-nav button {
+    padding-inline: 8px;
+  }
+  .cinematic .studio-button {
+    padding: 6px 10px;
+  }
+  .cinematic .scene-controls {
+    padding: 5px;
+    gap: 2px;
+  }
+  .cinematic .scene-controls .icon-button {
+    width: 30px;
+    height: 34px;
+  }
+  .cinematic .quality-button {
+    padding-inline: 6px;
+  }
+  .cinematic .quality-button::before {
+    display: none;
+  }
+  .cinematic .view-tabs > button {
+    padding-inline: 10px;
+  }
+  .cinematic .view-tabs > button > svg {
+    width: 14px;
+    height: 14px;
+    margin-right: 4px;
+  }
+  .cinematic .modal {
+    border-radius: 12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cinematic .inspector {
+    animation: none;
+  }
+  .cinematic.catalog-view .directory-card:hover,
+  .cinematic.catalog-view .directory-card.selected,
+  .cinematic :is(button, a):active {
+    transform: none;
+  }
+}
+@media (forced-colors: active) {
+  .cinematic :is(.directory-card, .search-popover, .inspector, .modal, .scene-controls) {
+    border: 1px solid CanvasText;
+  }
+  .cinematic :is(.view-tabs, .segmented, .collection-nav, .category-nav) button.active {
+    outline: 2px solid Highlight;
+  }
+}

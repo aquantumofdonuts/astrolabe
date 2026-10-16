@@ -4,6 +4,7 @@ import App from './App'
 import './styles.css'
 import './observatory.css'
 import './interface.css'
+import './hud.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

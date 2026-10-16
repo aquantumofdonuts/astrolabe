@@ -1,12 +1,18 @@
 import { expect, test } from '@playwright/test'
 import seed from '../public/catalog.json' with { type: 'json' }
+import { Frustum, Matrix4, PerspectiveCamera } from 'three'
+import { validateCatalog } from '../src/lib/catalog'
+import { buildConstellationLayout } from '../src/lib/orbits'
+import { systemOverview } from '../src/lib/overview'
 
 for (const [width, height] of [
+  [1920, 1080],
+  [1920, 969],
   [1440, 960],
   [1280, 800],
   [1024, 768],
 ]) {
-  test(`spherical overview keeps every destination legible and reachable at ${width}px`, async ({
+  test(`spherical overview keeps every destination legible and reachable at ${width}×${height}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height })
@@ -17,6 +23,23 @@ for (const [width, height] of [
       timeout: 30000,
     })
     await expect(page.locator('canvas')).toHaveAttribute('data-camera-moving', 'false')
+    const canvas = page.locator('canvas')
+    const rect = (await canvas.boundingBox())!
+    const pose = await canvas.evaluate((element) => ({
+      position: JSON.parse(element.dataset.cameraPosition!) as number[],
+      quaternion: JSON.parse(element.dataset.cameraQuaternion!) as number[],
+    }))
+    const camera = new PerspectiveCamera(42, rect.width / rect.height, 0.035, 10000)
+    camera.position.fromArray(pose.position)
+    camera.quaternion.fromArray(pose.quaternion)
+    camera.updateMatrixWorld()
+    const frustum = new Frustum().setFromProjectionMatrix(
+      new Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse)
+    )
+    const catalog = validateCatalog(seed)
+    for (const body of systemOverview(catalog, buildConstellationLayout(catalog)).bodies)
+      for (const plane of frustum.planes)
+        expect(plane.distanceToPoint(body.position)).toBeGreaterThan(body.radius)
     await page.evaluate(() => document.fonts.ready)
     const labels = page.locator('.projected-label:not(.core-projected-label)')
     await expect(labels).toHaveCount(seed.sites.length + seed.categories.length)

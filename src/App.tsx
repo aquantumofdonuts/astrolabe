@@ -398,7 +398,7 @@ export default function App() {
           }}
         >
           <span className="brand-monogram" aria-hidden="true">
-            A
+            <AstrolabeMark size={28} />
           </span>
           <div>ASTROLABE</div>
         </a>
@@ -914,11 +914,18 @@ export default function App() {
                 <Star size={17} />
               </button>
             </div>
-            <span className="category-label">
-              <span className="category-dot" style={{ background: selectedCategory.color }} />
-              {selectedCategory.name}
-            </span>
-            <h2>{selected.name}</h2>
+            <div className="inspector-identity">
+              <span className="instrument-emblem" aria-hidden="true">
+                <InstrumentIcon site={selected} size={28} />
+              </span>
+              <div>
+                <span className="category-label">
+                  <span className="category-dot" style={{ background: selectedCategory.color }} />
+                  {selectedCategory.name}
+                </span>
+                <h2>{selected.name}</h2>
+              </div>
+            </div>
             <p className="inspector-description">{selected.description}</p>
             {view === 'astrolabe' && (
               <button
