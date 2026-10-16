@@ -624,6 +624,18 @@
     transform: none;
   }
 }
+@media (max-width: 380px) {
+  .cinematic .view-tabs > button > svg {
+    display: none;
+  }
+  .cinematic .studio-button span {
+    font-size: 0;
+  }
+  .cinematic .studio-button span::after {
+    content: 'Studio';
+    font-size: 10px;
+  }
+}
 @media (forced-colors: active) {
   .cinematic :is(.directory-card, .search-popover, .inspector, .modal, .scene-controls) {
     border: 1px solid CanvasText;
