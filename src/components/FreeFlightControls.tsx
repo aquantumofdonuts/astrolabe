@@ -26,6 +26,7 @@ function overviewInsets(element: HTMLElement): ViewInsets {
     '.local-preview-banner',
     '.scene-controls',
     '.mobile-scene-directory',
+    '.launch-dock',
   ]) {
     const overlay = document.querySelector(selector)?.getBoundingClientRect()
     if (
@@ -38,7 +39,11 @@ function overviewInsets(element: HTMLElement): ViewInsets {
       overlay.left >= rect.right
     )
       continue
-    if (selector === '.scene-controls' || selector === '.mobile-scene-directory')
+    if (
+      (selector === '.scene-controls' && overlay.top > rect.top + rect.height / 2) ||
+      selector === '.mobile-scene-directory' ||
+      selector === '.launch-dock'
+    )
       insets.bottom = Math.max(insets.bottom, rect.bottom - overlay.top + 16)
     else insets.top = Math.max(insets.top, overlay.bottom - rect.top + 20)
   }
@@ -50,6 +55,7 @@ type IdleOrbit = {
   position: Vector3
   orientation: Quaternion
   insets: ViewInsets
+  focus: Vector3
 }
 
 type Props = {
@@ -99,10 +105,16 @@ export default function FreeFlightControls({
 
   const stopIdle = useCallback(() => {
     if (!idle.current) return
+    const previous = idle.current
     idle.current = null
     keys.current.clear()
     keyVelocity.current.set(0, 0, 0)
-    flight.reset(homePose.position, homePose.orientation)
+    // Restore the exact orbit, including inverted poses and permitted travel outside
+    // the translation sphere. reset() intentionally clamps and straightens a home view.
+    flight.position.copy(previous.position)
+    flight.orientation.copy(previous.orientation)
+    flight.focus.copy(previous.focus)
+    flight.stop()
     camera.position.copy(flight.position)
     camera.quaternion.copy(flight.orientation)
     camera.far = Math.max(240, radius * 4)
@@ -110,7 +122,7 @@ export default function FreeFlightControls({
     camera.updateMatrixWorld()
     gl.domElement.dataset.cameraIdle = 'false'
     invalidate()
-  }, [camera, flight, gl, homePose, invalidate, radius])
+  }, [camera, flight, gl, invalidate, radius])
 
   useEffect(() => {
     if (!idleEnabled || reducedMotion) {
@@ -138,6 +150,7 @@ export default function FreeFlightControls({
           startedAt: performance.now(),
           position: flight.position.clone(),
           orientation: flight.orientation.clone(),
+          focus: flight.focus.clone(),
           insets: overviewInsets(element),
         }
         onIdleStart()
@@ -159,7 +172,7 @@ export default function FreeFlightControls({
         heldKeys.clear()
       }
       // Capture runs before camera picking or UI handlers, so the first new gesture
-      // uses the reset camera rather than a stale point from the idle orbit.
+      // uses the restored camera rather than a stale point from the idle orbit.
       stopIdle()
       schedule()
     }
@@ -231,10 +244,10 @@ export default function FreeFlightControls({
     )
     keys.current.clear()
     keyVelocity.current.set(0, 0, 0)
-    const duration = Math.min(1.15, 0.65 + flight.position.distanceTo(position) * 0.012)
+    const duration = Math.min(0.65, 0.35 + flight.position.distanceTo(position) * 0.006)
     flight.transitionTo(position, orientation, target, reducedMotion ? 0 : duration)
     invalidate()
-  }, [visitKey, visitTarget, camera, flight, invalidate, reducedMotion])
+  }, [visitKey, visitTarget, camera, flight, invalidate, reducedMotion, size.width, size.height])
 
   useEffect(() => {
     const difference = zoomRequest - previousZoom.current

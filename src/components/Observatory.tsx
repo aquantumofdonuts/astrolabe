@@ -2,7 +2,9 @@ import { Component, Suspense, useEffect, useMemo, useRef, useState } from 'react
 import type { ErrorInfo, ReactNode } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import type { Catalog } from '../lib/catalog'
+import type { Catalog, Instrument } from '../lib/catalog'
+import { ArrowUpRight } from 'lucide-react'
+import LaunchLink from './LaunchLink'
 import { buildConstellationLayout, HOME_DISTANCE } from '../lib/orbits'
 import type { Constellation } from '../lib/orbits'
 import type { Point3 } from '../lib/orbits'
@@ -15,6 +17,8 @@ import SystemLife, { DestinationGlow, StarField } from './SystemLife'
 import { destinationRadius, projectDestination } from '../lib/hud'
 import { DeepSpace, ObservatoryLighting, StellarEngine } from './OrbitalArchitecture'
 import { systemOverview } from '../lib/overview'
+import ConstellationField from './ConstellationField'
+import { SurfaceMaterials } from './SurfaceMaterials'
 
 type Props = {
   catalog: Catalog
@@ -28,7 +32,11 @@ type Props = {
   zoomRequest: number
   visit: FocusRequest | null
   onCategory: (id: string) => void
-  onSelect: (id: string) => void
+  onSelect: (id: string, keyboard?: boolean) => void
+  launchingId: string | null
+  onLaunch: (site: Instrument) => void
+  onRemember: (site: Instrument) => void
+  onPreview: (id: string | null) => void
   onUnavailable: () => void
   onReady: () => void
   idleEnabled: boolean
@@ -75,13 +83,6 @@ function Scene({
   // Leave the bottom-right navigation strip clear even on a narrow desktop overview.
   const homeDistance = HOME_DISTANCE / Math.min(1, aspect / 1.7)
   const point = useMemo(() => new THREE.Vector3(), [])
-  const colors = useMemo(
-    () =>
-      stations.map(
-        (station) => props.catalog.categories.find((cat) => cat.id === station.categoryId)!.color
-      ),
-    [stations, props.catalog.categories]
-  )
   const images = useMemo(
     () => new Map(props.catalog.sites.map((site) => [site.id, site.image])),
     [props.catalog.sites]
@@ -114,12 +115,17 @@ function Scene({
     [stations, images]
   )
   useFrame((_, dt) => {
-    const hasSelection = !!props.selectedId || props.category !== 'all'
+    const hasSelection =
+      !!props.selectedId ||
+      props.category !== 'all' ||
+      props.visibleIds.length !== props.catalog.sites.length
     for (const site of props.catalog.sites) {
       const uniform = brightness.get(site.id)!
       const selected = props.selectedId
         ? props.selectedId === site.id
-        : props.category === site.category
+        : props.category === 'all'
+          ? props.visibleIds.includes(site.id)
+          : props.category === site.category
       const target = hasSelection && !selected ? 0.5 : 1
       uniform.value = props.reducedMotion
         ? target
@@ -182,16 +188,28 @@ function Scene({
       <DeepSpace radius={Math.max(240, homeDistance * 4)} />
       <StellarEngine paused={props.paused || props.reducedMotion} />
       <SystemLife
-        stations={stations}
-        colors={colors}
         paused={props.paused || props.reducedMotion}
         economical={props.economical}
         category={props.selectedId ? 'all' : props.category}
+        subdued={!!props.selectedId || props.visibleIds.length !== props.catalog.sites.length}
       />
       {stations.map((station, family) => {
         const category = props.catalog.categories.find((cat) => cat.id === station.categoryId)!
         return (
           <group key={category.id}>
+            <ConstellationField
+              station={station}
+              catalog={props.catalog}
+              family={family}
+              color={category.color}
+              paused={props.paused || props.reducedMotion}
+              dimmed={
+                !!props.selectedId ||
+                (props.category !== 'all' && props.category !== category.id) ||
+                (props.category === 'all' && props.visibleIds.length !== props.catalog.sites.length)
+              }
+              active={!props.selectedId && props.category === category.id}
+            />
             {station.instruments.map((instrument, variant) => (
               <InstrumentEmphasis
                 key={`${instrument.id}:${family}:${variant}:${!!images.get(instrument.id)}`}
@@ -302,13 +320,15 @@ export default function Observatory(props: Props) {
             }
           >
             <Suspense fallback={null}>
-              <Scene
-                props={props}
-                stations={stations}
-                labels={labels}
-                host={host}
-                hovered={hovered}
-              />
+              <SurfaceMaterials>
+                <Scene
+                  props={props}
+                  stations={stations}
+                  labels={labels}
+                  host={host}
+                  hovered={hovered}
+                />
+              </SurfaceMaterials>
             </Suspense>
           </Canvas>
           <div
@@ -327,6 +347,7 @@ export default function Observatory(props: Props) {
                 <div
                   key={cat.id}
                   className="projected-label system-projected-label"
+                  data-constellation={cat.id}
                   ref={ref('__category:' + cat.id)}
                   style={{ '--node-color': cat.color } as React.CSSProperties}
                 >
@@ -365,27 +386,50 @@ export default function Observatory(props: Props) {
                   }
                   onPointerEnter={() => {
                     hovered.current = site.id
+                    props.onPreview(site.id)
                   }}
-                  onPointerLeave={() => {
+                  onPointerLeave={(event) => {
+                    if (event.currentTarget.contains(document.activeElement)) return
                     hovered.current = null
+                    props.onPreview(null)
                   }}
                   onFocus={() => {
                     hovered.current = site.id
+                    props.onPreview(site.id)
                   }}
-                  onBlur={() => {
+                  onBlur={(event) => {
+                    if (event.currentTarget.contains(event.relatedTarget as Node)) return
+                    if (event.currentTarget.matches(':hover')) return
                     hovered.current = null
+                    props.onPreview(null)
                   }}
                 >
                   <button
                     className={`orbital-node ${active ? 'is-selected' : ''}`}
                     style={{ '--node-color': cat.color } as React.CSSProperties}
-                    onClick={() => props.onSelect(site.id)}
+                    onClick={(event) => props.onSelect(site.id, event.detail === 0)}
                     aria-label={`Select ${site.name}`}
                     aria-pressed={active}
+                    aria-describedby={`about-${site.id}`}
                     tabIndex={dim ? -1 : 0}
                   >
                     <span className="node-name">{site.name}</span>
                   </button>
+                  <LaunchLink
+                    site={site}
+                    className="node-launch"
+                    onRemember={props.onRemember}
+                    onLaunch={props.onLaunch}
+                    launching={props.launchingId === site.id}
+                    title={site.url ? `Launch ${site.name}` : `Preview ${site.name}`}
+                    tabIndex={dim ? -1 : 0}
+                    descriptionId={`about-${site.id}`}
+                  >
+                    <ArrowUpRight size={14} className="launch-arrow" aria-hidden="true" />
+                  </LaunchLink>
+                  <span className="sr-only" id={`about-${site.id}`}>
+                    {site.description}
+                  </span>
                   <span className="hud-reticle" aria-hidden="true" />
                   <span className="hud-detail" aria-hidden="true">
                     {cat.name}
@@ -400,14 +444,23 @@ export default function Observatory(props: Props) {
           {props.catalog.sites
             .filter((site) => props.visibleIds.includes(site.id))
             .map((site) => (
-              <button
-                key={site.id}
-                onClick={() => props.onSelect(site.id)}
-                aria-label={`Inspect ${site.name}`}
-              >
-                {site.name}
-                <span aria-hidden="true">↗</span>
-              </button>
+              <div className="mobile-tool" key={site.id}>
+                <button
+                  onClick={(event) => props.onSelect(site.id, event.detail === 0)}
+                  aria-label={`Inspect ${site.name}`}
+                >
+                  {site.name}
+                </button>
+                <LaunchLink
+                  site={site}
+                  className="mobile-tool-launch"
+                  onRemember={props.onRemember}
+                  onLaunch={props.onLaunch}
+                  launching={props.launchingId === site.id}
+                >
+                  <ArrowUpRight size={15} className="launch-arrow" aria-hidden="true" />
+                </LaunchLink>
+              </div>
             ))}
         </nav>
       </>

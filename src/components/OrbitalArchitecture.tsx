@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js'
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js'
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
@@ -23,12 +22,37 @@ export function ObservatoryLighting({
   const reported = useRef(false)
   const revealFrame = useRef(0)
   useEffect(() => {
-    const room = new RoomEnvironment()
+    const room = new THREE.Scene()
+    room.background = new THREE.Color('#111b27')
+    const cards: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>[] = []
+    const card = (
+      position: [number, number, number],
+      scale: [number, number, number],
+      color: [number, number, number]
+    ) => {
+      const surface = new THREE.Mesh(
+        new THREE.PlaneGeometry(1, 1),
+        new THREE.MeshBasicMaterial({ color: new THREE.Color(...color), side: THREE.DoubleSide })
+      )
+      surface.position.set(...position)
+      surface.scale.set(...scale)
+      surface.lookAt(0, 0, 0)
+      room.add(surface)
+      cards.push(surface)
+    }
+    // Broad warm highlights, a cool edge strip, and a soft overhead reflection.
+    card([-6, 7, 8], [6, 8, 1], [3.6, 3.1, 2.5])
+    card([7, 1, 4], [1.4, 8, 1], [1.3, 2.4, 3.7])
+    card([-2, 6, -7], [7, 2, 1], [1.5, 2.1, 3.1])
+    card([0, -6, 4], [5, 4, 1], [0.25, 0.35, 0.5])
     const pmrem = new THREE.PMREMGenerator(gl)
     const environment = pmrem.fromScene(room, 0.04)
     scene.environment = environment.texture
-    scene.environmentIntensity = 0.65
-    room.dispose()
+    scene.environmentIntensity = 0.8
+    for (const surface of cards) {
+      surface.geometry.dispose()
+      surface.material.dispose()
+    }
     pmrem.dispose()
     return () => {
       scene.environment = null
@@ -110,12 +134,13 @@ export function ObservatoryLighting({
   }, 1)
   return (
     <>
-      <ambientLight intensity={0.2} color="#71869d" />
+      <ambientLight intensity={0.09} color="#71869d" />
+      <hemisphereLight args={['#a7c3da', '#080d16', 0.3]} />
       <directionalLight
         castShadow
         position={[-7, 9, 12]}
-        intensity={2}
-        color="#fff0cf"
+        intensity={2.3}
+        color="#fff0d9"
         shadow-mapSize={[2048, 2048]}
         shadow-camera-left={-30}
         shadow-camera-right={30}
@@ -126,7 +151,8 @@ export function ObservatoryLighting({
         shadow-normalBias={0.035}
         shadow-bias={-0.0001}
       />
-      <directionalLight position={[8, -3, 3]} intensity={1.3} color="#77b6d0" />
+      <directionalLight position={[8, -3, 3]} intensity={0.65} color="#8cbad5" />
+      <directionalLight position={[-9, 4, -8]} intensity={1.6} color="#7faddc" />
       <pointLight position={[0, 0.5, 0]} intensity={25} color="#ffc270" decay={2} />
       <pointLight position={[-6, 3, 3]} intensity={18} color="#9ee9ef" decay={2} />
     </>
@@ -144,7 +170,7 @@ export function StellarEngine({ paused }: { paused: boolean }) {
     }
   })
   return (
-    <group position={[0, 0.25, -2]}>
+    <group position={[0, 0.25, -2]} scale={0.72}>
       <mesh userData={{ navigationSurface: true }}>
         <sphereGeometry args={[3.35, 96, 64]} />
         <shaderMaterial
@@ -179,8 +205,8 @@ export function StellarEngine({ paused }: { paused: boolean }) {
           float wisps=.5+.5*sin(a*23.-time*.19+sin(r*18.-time*.5));
           float corona=exp(-max(0.,r-.3)*(14.-rays*4.))*smoothstep(.27,.34,r);
           float flare=pow(rays,5.)*exp(-abs(r-.37)*19.)*wisps;
-          float glow=pow(max(0.,1.-r),3.)*.25;
-          gl_FragColor=vec4(1.,.37+corona*.15,.06,(glow+corona*.45+flare*.25)*(1.-smoothstep(.7,1.,r)));}`}
+          float glow=pow(max(0.,1.-r),3.)*.19;
+          gl_FragColor=vec4(1.,.39+corona*.15,.09,(glow+corona*.36+flare*.18)*(1.-smoothstep(.7,1.,r)));}`}
         />
       </mesh>
     </group>
@@ -204,10 +230,12 @@ export function DeepSpace({ radius }: { radius: number }) {
         float band=exp(-pow((d.y+d.x*.42-.08)*2.7,2.));
         float filaments=smoothstep(.36,.73,f)*band;
         float dust=smoothstep(.42,.65,fbm(q*1.8+8.))*band;
-        vec3 blue=vec3(.025,.085,.14), violet=vec3(.10,.035,.115);
+        float veins=smoothstep(.5,.72,fbm(q*3.5+warp))*band;
+        vec3 blue=vec3(.022,.075,.13), violet=vec3(.075,.035,.11);
         vec3 color=vec3(.002,.004,.009)+mix(blue,violet,smoothstep(-.7,.6,d.x))*filaments;
         color+=vec3(.15,.075,.025)*pow(f,3.)*exp(-length(d-vec3(-.5,.3,-.9))*2.5);
-        color*=.6*(1.-dust*.72);
+        color+=vec3(.035,.07,.09)*veins*.22;
+        color*=.58*(1.-dust*.82);
         gl_FragColor=vec4(color,1.);}`}
       />
     </mesh>

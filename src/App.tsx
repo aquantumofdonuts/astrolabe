@@ -28,13 +28,23 @@ import { InstrumentIcon } from './components/InstrumentIcon'
 import type { FocusRequest } from './lib/focus'
 import type { Catalog, Instrument } from './lib/catalog'
 import { LOCAL_CATALOG_KEY, searchSites, validateCatalog } from './lib/catalog'
-import { readPreference, writePreference } from './lib/preferences'
+import {
+  readPreference,
+  writePreference,
+  readViewPreferences,
+  startupView,
+  VIEW_PREFERENCES_KEY,
+  type ViewPreferences as PersonalPreferences,
+} from './lib/preferences'
 import { AstrolabeMark, Icon } from './components/Icon'
 import { Modal } from './components/Modal'
 import CatalogStudio from './components/CatalogStudio'
 import { catalogApi, readSharedCatalog, saveSharedCatalog } from './lib/liveCatalog'
 import DemoPreview from './components/DemoPreview'
 import ObservatoryView from './components/ObservatoryView'
+import LaunchDock from './components/LaunchDock'
+import LaunchLink, { type LaunchFeedback } from './components/LaunchLink'
+import ViewPreferences from './components/ViewPreferences'
 const FAVORITES_KEY = 'astrolabe.favorites.v1'
 const RECENTS_KEY = 'astrolabe.recents.v1'
 
@@ -58,6 +68,9 @@ function stringList(value: unknown): string[] {
 }
 
 export default function App() {
+  const [preferences, setPreferences] = useState(readViewPreferences)
+  const [preferencesOpen, setPreferencesOpen] = useState(false)
+  const [previewId, setPreviewId] = useState<string | null>(null)
   const [catalog, setCatalog] = useState<Catalog | null>(null)
   const [deployedCatalog, setDeployedCatalog] = useState<Catalog | null>(null)
   const [loadError, setLoadError] = useState('')
@@ -68,12 +81,14 @@ export default function App() {
   const sharedRequest = useRef(0)
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('all')
-  const [collection, setCollection] = useState<'all' | 'favorites' | 'recent'>('all')
+  const [collection, setCollection] = useState<'all' | 'favorites' | 'recent'>(
+    () => preferences.startupCollection
+  )
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [view, setView] = useState<'astrolabe' | 'directory'>(() =>
-    window.innerWidth < 900 ? 'directory' : 'astrolabe'
+    startupView(preferences.startupView, window.innerWidth)
   )
-  const [paused, setPaused] = useState(false)
+  const paused = !preferences.ambientMotion
   const [economical, setEconomical] = useState(
     () => readPreference<boolean>('astrolabe.economical', false) === true
   )
@@ -89,6 +104,8 @@ export default function App() {
   const [mobileDetailsOpen, setMobileDetailsOpen] = useState(false)
   const [demo, setDemo] = useState<Instrument | null>(null)
   const [toast, setToast] = useState('')
+  const [feedback, setFeedback] = useState<LaunchFeedback | null>(null)
+  const launchSequence = useRef(0)
   const [webglUnavailable, setWebglUnavailable] = useState(false)
   const [favorites, setFavorites] = useState<string[]>(() =>
     stringList(readPreference(FAVORITES_KEY, []))
@@ -96,16 +113,54 @@ export default function App() {
   const [recents, setRecents] = useState<string[]>(() =>
     stringList(readPreference(RECENTS_KEY, []))
   )
+  const inspectorRef = useRef<HTMLElement>(null)
+  const inspectionTrigger = useRef<HTMLElement | null>(null)
+  const inspectionFocusRequested = useRef(false)
   const searchRef = useRef<HTMLInputElement>(null)
   const stageRef = useRef<HTMLElement>(null)
   const searchContainer = useRef<HTMLDivElement>(null)
-  const searchView = useRef(view)
+
+  const updatePreferences = (patch: Partial<PersonalPreferences>) => {
+    const next = { ...preferences, ...patch }
+    setPreferences(next)
+    if (!writePreference(VIEW_PREFERENCES_KEY, next))
+      setToast('View preferences changed for this session. Browser storage is unavailable.')
+  }
+  const updateQuality = (next: boolean) => {
+    setEconomical(next)
+    if (!writePreference('astrolabe.economical', next))
+      setToast('Graphics changed for this session. Browser storage is unavailable.')
+  }
+  useEffect(() => setPreviewId(null), [view, category, query, selectedId])
 
   const clearSelection = useCallback(() => {
+    inspectionFocusRequested.current = false
     setSelectedId(null)
     setMobileDetailsOpen(false)
     setVisit(null)
   }, [])
+
+  const dismissDetails = useCallback(() => {
+    clearSelection()
+    const previous = inspectionTrigger.current
+    inspectionTrigger.current = null
+    if (previous?.isConnected) previous.focus({ preventScroll: true })
+  }, [clearSelection])
+  useEffect(() => {
+    if (!selectedId || mobileDetailsOpen || !inspectionFocusRequested.current) return
+    const frame = requestAnimationFrame(() => {
+      inspectionFocusRequested.current = false
+      inspectorRef.current
+        ?.querySelector<HTMLElement>('.launch-button')
+        ?.focus({ preventScroll: window.innerWidth > 760 })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [selectedId, visit?.key, mobileDetailsOpen])
+  useEffect(() => {
+    if (!feedback) return
+    const timer = window.setTimeout(() => setFeedback(null), 2200)
+    return () => clearTimeout(timer)
+  }, [feedback])
 
   const changeView = useCallback(
     (next: 'astrolabe' | 'directory') => {
@@ -198,7 +253,7 @@ export default function App() {
   }, [])
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (studioOpen || demo || helpOpen || mobileDetailsOpen) return
+      if (studioOpen || demo || helpOpen || mobileDetailsOpen || preferencesOpen) return
       const input =
         event.target instanceof HTMLInputElement ||
         event.target instanceof HTMLTextAreaElement ||
@@ -213,6 +268,7 @@ export default function App() {
         setSearchOpen(true)
       }
       if (event.key === 'Escape') {
+        dismissDetails()
         setQuery('')
         setSearchOpen(false)
         setExpanded(false)
@@ -222,21 +278,29 @@ export default function App() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [studioOpen, demo, helpOpen, mobileDetailsOpen])
+  }, [studioOpen, demo, helpOpen, mobileDetailsOpen, preferencesOpen, dismissDetails])
 
   const allMatches = useMemo(
     () => (catalog ? searchSites(catalog.sites, query, catalog.categories) : []),
     [catalog, query]
   )
   useEffect(() => {
-    const viewChanged = searchView.current !== view
-    searchView.current = view
+    if (!searchOpen) return
+    const option = document.getElementById(`search-${allMatches[searchIndex]?.id}`)
+    const list = option?.parentElement
+    if (!option || !list) return
+    const row = option.getBoundingClientRect()
+    const viewport = list.getBoundingClientRect()
+    // Scroll only the results, leaving the page and camera where the user put them.
+    if (row.top < viewport.top) list.scrollTop += row.top - viewport.top
+    else if (row.bottom > viewport.bottom) list.scrollTop += row.bottom - viewport.bottom
+  }, [searchOpen, searchIndex, allMatches])
+  useEffect(() => {
     if (!query.trim()) return
     setCategory('all')
     setCollection('all')
-    // Returning to the scene must not reopen details for the previous search preview.
-    if (view === 'astrolabe' && !viewChanged) setSelectedId(allMatches[searchIndex]?.id ?? null)
-    else clearSelection()
+    // Search emphasizes matching destinations without opening an inspector or moving the camera.
+    clearSelection()
   }, [query, allMatches, searchIndex, view, clearSelection])
   const visibleSites = useMemo(() => {
     let sites = allMatches.filter((site) => category === 'all' || site.category === category)
@@ -266,18 +330,21 @@ export default function App() {
   const activeCategory = catalog?.categories.find((entry) => entry.id === category)
   const favoritesCount = catalog?.sites.filter((site) => favorites.includes(site.id)).length || 0
   const recentsCount = catalog?.sites.filter((site) => recents.includes(site.id)).length || 0
-  const launchpad = catalog?.sites.filter((site) => favorites.includes(site.id)).slice(0, 4) || []
-  if (launchpad.length === 0)
-    launchpad.push(...(catalog?.sites.filter((site) => site.featured).slice(0, 4) || []))
-  const toggleFavorite = (id: string) => {
-    const next = favorites.includes(id)
-      ? favorites.filter((entry) => entry !== id)
-      : [...favorites, id]
+  const saveFavorites = (next: string[]) => {
     setFavorites(next)
     if (!writePreference(FAVORITES_KEY, next))
       setToast('Favorites changed for this session. Browser storage is unavailable.')
   }
+  const toggleFavorite = (id: string) =>
+    saveFavorites(
+      favorites.includes(id) ? favorites.filter((entry) => entry !== id) : [...favorites, id]
+    )
   const rememberLaunch = (site: Instrument) => {
+    setFeedback({
+      id: site.id,
+      label: site.url ? `Opening ${site.name} in a new tab` : `Previewing ${site.name}`,
+      sequence: ++launchSequence.current,
+    })
     setMobileDetailsOpen(false)
     const next = [site.id, ...recents.filter((entry) => entry !== site.id)].slice(0, 20)
     setRecents(next)
@@ -289,12 +356,15 @@ export default function App() {
     if (site.url) window.open(site.url, '_blank', 'noopener,noreferrer')
     else setDemo(site)
   }
-  const select = (id: string) => {
+  const select = (id: string, keyboard = false) => {
+    inspectionFocusRequested.current = keyboard
+    inspectionTrigger.current =
+      keyboard && document.activeElement instanceof HTMLElement ? document.activeElement : null
     setCategory('all')
     setSelectedId(id)
     setVisit((current) => ({ kind: 'node', id, key: (current?.key ?? 0) + 1 }))
     setSearchOpen(false)
-    if (window.matchMedia('(max-width: 1000px)').matches) setMobileDetailsOpen(true)
+    setMobileDetailsOpen(view === 'directory' && window.matchMedia('(max-width: 1000px)').matches)
   }
   const changeCategory = (id: string) => {
     setQuery('')
@@ -348,36 +418,6 @@ export default function App() {
       </div>
     )
 
-  const LaunchLink = ({
-    site,
-    className = '',
-    children,
-  }: {
-    site: Instrument
-    className?: string
-    children: React.ReactNode
-  }) =>
-    site.url ? (
-      <a
-        className={className}
-        href={site.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={() => rememberLaunch(site)}
-        aria-label={`Launch ${site.name} in a new tab`}
-      >
-        {children}
-      </a>
-    ) : (
-      <button
-        className={className}
-        onClick={() => launch(site)}
-        aria-label={`Preview ${site.name} demo`}
-      >
-        {children}
-      </button>
-    )
-
   return (
     <div
       className={`app-shell cinematic ${view === 'astrolabe' ? 'world-view' : 'catalog-view'} ${selected ? 'has-selection' : ''} ${expanded ? 'scene-expanded' : ''}`}
@@ -418,6 +458,7 @@ export default function App() {
                 setSearchOpen(true)
               }}
               onFocus={() => setSearchOpen(true)}
+              onClick={() => setSearchOpen(true)}
               placeholder="Search instruments…"
               aria-label="Search instruments"
               aria-expanded={searchOpen}
@@ -481,7 +522,13 @@ export default function App() {
                     aria-selected={index === searchIndex}
                     className={`search-result ${index === searchIndex ? 'active' : ''}`}
                   >
-                    <button onClick={() => select(site.id)}>
+                    <LaunchLink
+                      onRemember={rememberLaunch}
+                      onLaunch={launch}
+                      site={site}
+                      launching={feedback?.id === site.id}
+                      className="search-result-primary"
+                    >
                       <span
                         style={{
                           color: catalog.categories.find((entry) => entry.id === site.category)!
@@ -492,14 +539,21 @@ export default function App() {
                       </span>
                       <div>
                         <strong>{site.name}</strong>
-                        <small>
+                        <small>{site.description}</small>
+                        <span className="search-category">
                           {catalog.categories.find((entry) => entry.id === site.category)!.name}
-                        </small>
+                        </span>
                       </div>
-                    </button>
-                    <LaunchLink site={site} className="search-launch">
-                      <ArrowUpRight size={16} />
+                      <ArrowUpRight size={16} className="launch-arrow" />
                     </LaunchLink>
+                    <button
+                      className="search-inspect"
+                      aria-label={`Inspect ${site.name}`}
+                      onClick={(event) => select(site.id, event.detail === 0)}
+                      title="View details"
+                    >
+                      <Compass size={16} />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -514,17 +568,28 @@ export default function App() {
             </div>
           )}
         </div>
-        <button
-          className="secondary-button help-button"
-          aria-haspopup="dialog"
-          onClick={() => {
-            setSearchOpen(false)
-            setHelpOpen(true)
-          }}
-        >
-          <CircleHelp size={17} aria-hidden="true" />
-          Help
-        </button>
+        <div className="header-actions">
+          <ViewPreferences
+            value={preferences}
+            onChange={updatePreferences}
+            open={preferencesOpen}
+            onOpen={setPreferencesOpen}
+            economical={economical}
+            onQuality={updateQuality}
+            reducedMotion={reducedMotion}
+          />
+          <button
+            className="secondary-button help-button"
+            aria-haspopup="dialog"
+            onClick={() => {
+              setSearchOpen(false)
+              setHelpOpen(true)
+            }}
+          >
+            <CircleHelp size={17} aria-hidden="true" />
+            Help
+          </button>
+        </div>
       </header>
 
       <aside className="sidebar" aria-label="Workspace navigation">
@@ -671,7 +736,7 @@ export default function App() {
                   visibleIds={visibleSites.map((site) => site.id)}
                   selectedId={selectedId}
                   category={category}
-                  paused={paused}
+                  paused={paused || searchOpen || preferencesOpen}
                   reducedMotion={reducedMotion}
                   economical={economical}
                   resetKey={resetKey}
@@ -679,15 +744,26 @@ export default function App() {
                   visit={visit}
                   onCategory={changeCategory}
                   onSelect={select}
+                  launchingId={feedback?.id ?? null}
+                  onLaunch={launch}
+                  onRemember={rememberLaunch}
+                  onPreview={setPreviewId}
                   onUnavailable={onUnavailable}
                   onDirectory={() => changeView('directory')}
                   idleEnabled={
+                    preferences.idleTour &&
+                    !preferencesOpen &&
                     !paused &&
                     !reducedMotion &&
                     !studioOpen &&
                     !helpOpen &&
                     !demo &&
-                    !mobileDetailsOpen
+                    !mobileDetailsOpen &&
+                    !selectedId &&
+                    !searchOpen &&
+                    !query &&
+                    category === 'all' &&
+                    collection === 'all'
                   }
                   onIdleStart={startIdle}
                 />
@@ -715,10 +791,7 @@ export default function App() {
                     className="quality-button"
                     aria-label="Use lighter graphics"
                     aria-pressed={economical}
-                    onClick={() => {
-                      setEconomical(!economical)
-                      writePreference('astrolabe.economical', !economical)
-                    }}
+                    onClick={() => updateQuality(!economical)}
                   >
                     {economical ? 'Quality: light' : 'Quality: full'}
                   </button>
@@ -740,7 +813,7 @@ export default function App() {
                   </button>
                   <button
                     className="icon-button"
-                    onClick={() => setPaused((value) => !value)}
+                    onClick={() => updatePreferences({ ambientMotion: !preferences.ambientMotion })}
                     disabled={reducedMotion}
                     aria-label={paused ? 'Resume ambient motion' : 'Pause ambient motion'}
                     aria-pressed={paused || reducedMotion}
@@ -816,16 +889,25 @@ export default function App() {
                           <Star size={16} />
                         </button>
                       </div>
-                      <button className="directory-select" onClick={() => select(site.id)}>
+                      <button
+                        className="directory-select"
+                        onClick={(event) => select(site.id, event.detail === 0)}
+                      >
                         <small>{cat.name}</small>
                         <h2>{site.name}</h2>
                         <p>{site.description}</p>
                       </button>
                       <div className="directory-card-footer">
                         <span>{site.url ? 'Website' : 'Demo instrument'}</span>
-                        <LaunchLink site={site} className="directory-launch">
+                        <LaunchLink
+                          onRemember={rememberLaunch}
+                          onLaunch={launch}
+                          site={site}
+                          launching={feedback?.id === site.id}
+                          className="directory-launch"
+                        >
                           {site.url ? 'Launch' : 'Preview'}
-                          <ArrowUpRight size={15} />
+                          <ArrowUpRight size={15} className="launch-arrow" />
                         </LaunchLink>
                       </div>
                     </article>
@@ -852,46 +934,24 @@ export default function App() {
             </>
           )}
         </section>
-        {view === 'directory' && (
-          <section className="launchpad" aria-label="Quick launch">
-            <div className="launchpad-heading">
-              <h2>
-                <Star size={14} />
-                Quick launch
-              </h2>
-              <span>{favoritesCount ? 'Favorites' : 'Featured'}</span>
-            </div>
-            <div className="launchpad-grid">
-              {launchpad.map((site) => {
-                const cat = catalog.categories.find((entry) => entry.id === site.category)!
-                return (
-                  <div
-                    className="launchpad-card"
-                    key={site.id}
-                    style={{ '--accent': cat.color } as React.CSSProperties}
-                  >
-                    <LaunchLink site={site} className="launchpad-link">
-                      <span className="launchpad-icon">
-                        <InstrumentIcon site={site} size={19} />
-                      </span>
-                      <div>
-                        <strong>{site.name}</strong>
-                        <span>{cat.name}</span>
-                      </div>
-                      <ArrowUpRight size={15} />
-                    </LaunchLink>
-                  </div>
-                )
-              })}
-              {!launchpad.length && (
-                <p>Add featured instruments in Catalog studio or star a tool.</p>
-              )}
-            </div>
-          </section>
-        )}
+        <LaunchDock
+          catalog={catalog}
+          favorites={favorites}
+          recents={recents}
+          onFavorites={saveFavorites}
+          onLaunch={launch}
+          onRemember={rememberLaunch}
+          onSearch={() => {
+            searchRef.current?.focus()
+            setSearchOpen(true)
+          }}
+          previewId={previewId}
+          feedback={feedback}
+        />
       </main>
 
       <aside
+        ref={inspectorRef}
         className="inspector"
         aria-label="Selected instrument"
         aria-live="polite"
@@ -907,7 +967,7 @@ export default function App() {
               <button
                 className="inspector-close"
                 aria-label="Close instrument details"
-                onClick={clearSelection}
+                onClick={dismissDetails}
               >
                 Close <X size={14} />
               </button>
@@ -948,9 +1008,19 @@ export default function App() {
                 Recenter <span>↗</span>
               </button>
             )}
-            <LaunchLink site={selected} className="launch-button">
+            <LaunchLink
+              onRemember={rememberLaunch}
+              onLaunch={launch}
+              site={selected}
+              launching={feedback?.id === selected.id}
+              className="launch-button"
+            >
               {selected.url ? 'Launch instrument' : 'Preview demo'}
-              {selected.url ? <ArrowUpRight size={18} /> : <ArrowRight size={18} />}
+              {selected.url ? (
+                <ArrowUpRight size={18} className="launch-arrow" />
+              ) : (
+                <ArrowRight size={18} className="launch-arrow" />
+              )}
             </LaunchLink>
             <div className="launch-note">
               {selected.url ? (
@@ -992,6 +1062,9 @@ export default function App() {
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={() => rememberLaunch(selected)}
+                  onAuxClick={(event) => {
+                    if (event.button === 1) rememberLaunch(selected)
+                  }}
                 >
                   {new URL(selected.url).hostname}
                   <ArrowUpRight size={13} />
@@ -1137,9 +1210,15 @@ export default function App() {
                 </button>
               ))}
             </div>
-            <LaunchLink site={selected} className="launch-button">
+            <LaunchLink
+              onRemember={rememberLaunch}
+              onLaunch={launch}
+              site={selected}
+              launching={feedback?.id === selected.id}
+              className="launch-button"
+            >
               {selected.url ? 'Launch instrument' : 'Preview demo'}
-              <ArrowUpRight size={18} />
+              <ArrowUpRight size={18} className="launch-arrow" />
             </LaunchLink>
             <div className="launch-note">
               {selected.url ? 'Opens in a new tab' : 'Demo instrument · no URL assigned'}
@@ -1191,10 +1270,14 @@ export default function App() {
           </p>
           <p className="help-note">
             <strong>Idle tour:</strong> After 45 seconds without input, the whole system slowly
-            orbits in view. Any input returns to the initial overview.
+            orbits in view. Any input restores your previous camera view. View preferences lets you
+            turn tours off.
           </p>
         </Modal>
       )}
+      <span className="sr-only" aria-live="polite" aria-atomic="true">
+        {feedback?.label ?? ''}
+      </span>
       {toast && (
         <div className="toast" role="status">
           <Check size={16} />

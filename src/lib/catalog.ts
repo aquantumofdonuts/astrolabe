@@ -137,25 +137,64 @@ export function validateCatalog(value: unknown): Catalog {
   return { version: 1, title: value.title.trim(), categories, sites }
 }
 
+function normalizeSearch(value: string) {
+  return value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase()
+}
+
+// One insertion, deletion, substitution, or adjacent transposition. Short acronyms stay exact.
+function nearWord(term: string, word: string) {
+  if (term.length < 4 || Math.abs(term.length - word.length) > 1) return false
+  let i = 0
+  while (i < Math.min(term.length, word.length) && term[i] === word[i]) i++
+  if (term.length === word.length) {
+    return (
+      term.slice(i + 1) === word.slice(i + 1) ||
+      (term[i] === word[i + 1] &&
+        term[i + 1] === word[i] &&
+        term.slice(i + 2) === word.slice(i + 2))
+    )
+  }
+  return term.length > word.length
+    ? term.slice(i + 1) === word.slice(i)
+    : term.slice(i) === word.slice(i + 1)
+}
+
 export function searchSites(sites: Instrument[], query: string, categories: Category[] = []) {
-  const terms = query.toLocaleLowerCase().trim().split(/\s+/).filter(Boolean)
+  const phrase = normalizeSearch(query).trim()
+  const terms = phrase.split(/\s+/).filter(Boolean)
+  if (!terms.length) return sites.slice()
   return sites
-    .filter((site) => {
+    .flatMap((site) => {
+      const name = normalizeSearch(site.name)
+      const tags = normalizeSearch(site.tags.join(' '))
       const categoryName = categories.find((category) => category.id === site.category)?.name || ''
-      const content =
-        `${site.name} ${site.description} ${site.tags.join(' ')} ${site.category} ${categoryName}`.toLocaleLowerCase()
-      return terms.every((term) => content.includes(term))
-    })
-    .sort((a, b) => {
-      if (!terms.length) return 0
-      const rank = (site: Instrument) =>
-        site.name.toLocaleLowerCase().startsWith(terms.join(' '))
+      const content = normalizeSearch(
+        `${site.name} ${site.description} ${tags} ${site.category} ${categoryName}`
+      )
+      const words = `${name} ${tags}`.split(/[^\p{L}\p{N}]+/u)
+      let fuzzy = 0
+      for (const term of terms) {
+        if (content.includes(term)) continue
+        if (!words.some((word) => nearWord(term, word))) return []
+        fuzzy++
+      }
+      const rank =
+        name === phrase
           ? 0
-          : terms.every((term) => site.name.toLocaleLowerCase().includes(term))
+          : name.startsWith(phrase)
             ? 1
-            : 2
-      return rank(a) - rank(b)
+            : terms.every((term) => name.includes(term))
+              ? 2
+              : terms.every((term) => tags.includes(term))
+                ? 3
+                : 4
+      return [{ site, rank: rank + fuzzy * 10 }]
     })
+    .sort((a, b) => a.rank - b.rank)
+    .map((result) => result.site)
 }
 
 export function uniqueId(name: string, existing: string[]): string {

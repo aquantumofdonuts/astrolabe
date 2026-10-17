@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { Point3 } from '../lib/orbits'
+import LogoBeacon from './LogoBeacon'
 
 const surface = { navigationSurface: true }
 const noise = `
@@ -416,7 +417,9 @@ export default function CelestialDestination({
         invalidate()
       }}
     >
-      {!image && variant % 3 === 1 ? (
+      {image ? (
+        <LogoBeacon image={image} color={color} id={id} paused={paused} />
+      ) : variant % 3 === 1 ? (
         <Habitat family={family} color={color} paused={paused} />
       ) : (
         <Planet family={family} variant={variant} paused={paused} image={image} />

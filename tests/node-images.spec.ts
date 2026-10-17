@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import formats from './fixtures/thumbnail-formats.json' with { type: 'json' }
 
-const imageInput = 'Upload globe image'
+const imageInput = 'Upload destination image'
 test.beforeEach(async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.addInitScript(() => localStorage.setItem('astrolabe.economical', 'true'))
@@ -22,14 +22,14 @@ test('normalizes common thumbnails, rejects invalid uploads, and retains the las
       buffer: Buffer.from(fixture.data, 'base64'),
     })
     await expect(dialog.getByRole('status')).toContainText('Image ready')
-    const image = dialog.getByRole('img', { name: 'Sentinel globe image', exact: true })
+    const image = dialog.getByRole('img', { name: 'Sentinel destination image', exact: true })
     await expect(image).toHaveJSProperty('naturalWidth', 512)
     expect((await image.getAttribute('src'))!.length).toBeLessThanOrEqual(128 * 1024)
   }
   await dialog.getByLabel(imageInput, { exact: true }).setInputFiles('tests/fixtures/too-wide.png')
   await expect(dialog.getByRole('alert')).toContainText('8192')
   const previous = await dialog
-    .getByRole('img', { name: 'Sentinel globe image', exact: true })
+    .getByRole('img', { name: 'Sentinel destination image', exact: true })
     .getAttribute('src')
   for (const fixture of [
     { name: 'broken.png', mimeType: 'image/png', buffer: Buffer.from('not an image') },
@@ -40,7 +40,7 @@ test('normalizes common thumbnails, rejects invalid uploads, and retains the las
     await expect(dialog.getByRole('alert')).toBeVisible()
     expect(
       await dialog
-        .getByRole('img', { name: 'Sentinel globe image', exact: true })
+        .getByRole('img', { name: 'Sentinel destination image', exact: true })
         .getAttribute('src')
     ).toBe(previous)
   }
@@ -60,7 +60,7 @@ test('assigns an image to a station, persists and exports it, reuses it, and res
   await dialog.getByLabel(imageInput, { exact: true }).setInputFiles('tests/fixtures/node-icon.png')
   await expect(dialog.getByRole('status')).toContainText('Image ready')
   const normalized = await dialog
-    .getByRole('img', { name: 'Pulse globe image', exact: true })
+    .getByRole('img', { name: 'Pulse destination image', exact: true })
     .getAttribute('src')
   await dialog.getByRole('button', { name: 'Apply local preview', exact: true }).click()
   await dialog.getByRole('button', { name: 'Close dialog', exact: true }).click()
@@ -75,13 +75,13 @@ test('assigns an image to a station, persists and exports it, reuses it, and res
   await page.getByRole('button', { name: 'Select Pulse', exact: true }).click()
   await page.getByRole('button', { name: 'Recenter selected instrument' }).click()
   await page.waitForTimeout(800)
-  await page.screenshot({ path: 'docs/evaluation/image-globe.png' })
+  await page.screenshot({ path: '/tmp/astrolabe-image-beacon.png' })
   await expect(page.getByRole('button', { name: 'Select Pulse', exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Catalog studio', exact: true }).click()
   await dialog.locator('.studio-entry').filter({ hasText: 'Sentinel' }).click()
   await dialog.getByLabel('Use another node’s image', { exact: true }).selectOption('pulse')
   await expect(
-    dialog.getByRole('img', { name: 'Sentinel globe image', exact: true })
+    dialog.getByRole('img', { name: 'Sentinel destination image', exact: true })
   ).toHaveAttribute('src', normalized!)
   const downloading = page.waitForEvent('download')
   await dialog.getByRole('button', { name: 'Export', exact: true }).click()
@@ -93,8 +93,10 @@ test('assigns an image to a station, persists and exports it, reuses it, and res
     .getByLabel('Import catalog', { exact: true })
     .setInputFiles({ name: 'catalog.json', mimeType: 'application/json', buffer: bytes })
   await dialog.locator('.studio-entry').filter({ hasText: 'Pulse' }).click()
-  await dialog.getByRole('button', { name: 'Remove globe image', exact: true }).click()
-  await expect(dialog.getByRole('img', { name: 'Pulse globe image', exact: true })).toHaveCount(0)
+  await dialog.getByRole('button', { name: 'Remove destination image', exact: true }).click()
+  await expect(
+    dialog.getByRole('img', { name: 'Pulse destination image', exact: true })
+  ).toHaveCount(0)
   await dialog.getByRole('button', { name: 'Apply local preview', exact: true }).click()
   await dialog.getByRole('button', { name: 'Close dialog', exact: true }).click()
   await page.getByRole('button', { name: 'Select Pulse', exact: true }).click()

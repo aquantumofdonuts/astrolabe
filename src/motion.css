@@ -1,0 +1,216 @@
+/* All transitions, transforms, and keyframes, including reduced-motion behavior. Application geometry belongs in layout.css. */
+button {
+  transition:
+    background 0.18s,
+    color 0.18s,
+    border-color 0.18s,
+    opacity 0.18s;
+}
+.node-icon {
+  transition: all 0.2s;
+  transform: rotate(-7deg);
+}
+.node-icon svg {
+  transform: rotate(7deg);
+}
+.scene-empty {
+  transform: translate(-50%, -50%);
+}
+.launchpad-card {
+  transition:
+    border-color 0.2s,
+    background 0.2s;
+}
+.emblem-orbit.second {
+  transform: scaleX(0.82) rotate(-35deg);
+}
+.directory-card {
+  transition: border-color 0.18s;
+}
+.toast {
+  transform: translateX(-50%);
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+.observatory-renderer {
+  animation: observatory-arrival 1.2s ease-out both;
+}
+@keyframes observatory-arrival {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.projected-label {
+  transition:
+    opacity 0.16s ease,
+    visibility 0.16s;
+  will-change: transform, opacity;
+}
+.hud-reticle {
+  transform: translate(-50%, -50%);
+  transition: opacity 0.15s ease;
+}
+.hud-detail {
+  transform: translateX(-50%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .cinematic .observatory-renderer {
+    animation: none;
+  }
+  .cinematic .projected-label {
+    transition: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cinematic *,
+  .cinematic *::before,
+  .cinematic *::after {
+    transition-duration: 0s !important;
+  }
+}
+.cinematic .scene-content {
+  transition: opacity 0.55s ease-out;
+}
+.cinematic .scene-content .observatory-renderer {
+  animation: none;
+}
+.loading-orbit {
+  transform: rotate(-30deg);
+  animation: loading-orbit 9s linear infinite;
+  will-change: transform;
+}
+.loading-orbit:nth-child(2) {
+  animation-duration: 12s;
+  animation-direction: reverse;
+  animation-delay: -4s;
+}
+.loading-orbit:nth-child(3) {
+  animation-duration: 16s;
+  animation-delay: -8s;
+}
+@keyframes loading-orbit {
+  from {
+    transform: rotate(-30deg);
+  }
+  to {
+    transform: rotate(330deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loading-orbit {
+    animation: none;
+  }
+  .loading-orbit:nth-child(2) {
+    transform: rotate(35deg);
+  }
+  .loading-orbit:nth-child(3) {
+    transform: rotate(90deg);
+  }
+  .cinematic .scene-content {
+    transition: none;
+  }
+}
+
+.cinematic :is(button, a, input, textarea, select) {
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+.cinematic :is(button, a):active:not(:disabled) {
+  transform: translateY(1px);
+}
+.cinematic :is(.orbital-node, .system-label):active {
+  transform: none;
+}
+.cinematic .inspector {
+  animation: hud-reveal 220ms ease-out both;
+}
+.instrument-emblem::after {
+  transform: rotate(-35deg);
+}
+.cinematic.catalog-view .directory-card {
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+.cinematic.catalog-view .directory-card:hover,
+.cinematic.catalog-view .directory-card.selected {
+  transform: translateY(-2px);
+}
+
+@keyframes hud-reveal {
+  from {
+    opacity: 0;
+    translate: 8px 0;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cinematic .inspector {
+    animation: none;
+  }
+  .cinematic.catalog-view .directory-card:hover,
+  .cinematic.catalog-view .directory-card.selected,
+  .cinematic :is(button, a):active {
+    transform: none;
+  }
+}
+.launch-acknowledgement {
+  transform: translateY(-50%);
+}
+.cinematic :is(.node-launch, .mobile-tool-launch) .launch-acknowledgement {
+  transform: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cinematic .inspector-inner {
+    animation: inspector-content-entry 180ms ease-out both;
+  }
+  .cinematic :is(.search-popover, .preferences-panel) {
+    animation: surface-entry 120ms ease-out both;
+  }
+  .cinematic .launch-acknowledgement {
+    animation: acknowledgement-entry 140ms ease-out both;
+  }
+}
+@keyframes inspector-content-entry {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes surface-entry {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes acknowledgement-entry {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

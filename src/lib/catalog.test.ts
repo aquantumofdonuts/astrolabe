@@ -71,6 +71,20 @@ describe('discoverability', () => {
     )
     expect(searchSites(catalog.sites, 'observability', categories)).toHaveLength(3)
   })
+  it('tolerates a single typo in names and tags without broadening short acronyms', () => {
+    expect(searchSites(catalog.sites, 'atals')[0].id).toBe('atlas')
+    expect(searchSites(catalog.sites, 'swich backup').map((site) => site.id)).toEqual(['atlas'])
+    expect(searchSites(catalog.sites, 'atals unicorn')).toEqual([])
+    expect(searchSites(catalog.sites, 'hrz')).toEqual([])
+  })
+  it('ranks exact matches before typo matches and ignores accents', () => {
+    const sites = [
+      { ...catalog.sites[0], id: 'other', name: 'Atlás' },
+      { ...catalog.sites[1], id: 'exact', name: 'Atals' },
+    ]
+    expect(searchSites(sites, 'atals').map((site) => site.id)).toEqual(['exact', 'other'])
+    expect(searchSites(sites, 'atlas')[0].id).toBe('other')
+  })
   it('generates unique stable IDs from names', () => {
     expect(uniqueId('Network Atlas!', ['network-atlas', 'network-atlas-2'])).toBe('network-atlas-3')
     expect(uniqueId('✧', [])).toBe('instrument')

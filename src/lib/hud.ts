@@ -3,7 +3,7 @@ import type { Point3 } from './orbits'
 
 /** Conservative silhouette radius; HUD stays outside the body, even during a close approach. */
 export function destinationRadius(family: number, variant: number, hasImage = false) {
-  if (hasImage) return 1.12
+  if (hasImage) return 1.65
   return variant % 3 === 1 ? 1.35 : variant % 3 === 2 && family % 2 === 1 ? 1.95 : 1.12
 }
 

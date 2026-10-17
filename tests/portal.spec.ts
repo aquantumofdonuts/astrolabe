@@ -122,6 +122,7 @@ test('zooms over labels without scrolling and keeps the complete directory reach
 test('flies through the sun, turns back 180 degrees, and stays inside the scene sphere', async ({
   page,
 }) => {
+  test.setTimeout(60000)
   await page.emulateMedia({ reducedMotion: 'reduce' })
   // Software-rendered CI uses light graphics for the sustained flight timing check.
   await page.addInitScript(() => localStorage.setItem('astrolabe.economical', 'true'))
@@ -139,7 +140,8 @@ test('flies through the sun, turns back 180 degrees, and stays inside the scene 
   await page.keyboard.down('Shift')
   await page.keyboard.down('w')
   try {
-    await expect.poll(async () => (await pose()).position[2], { timeout: 15000 }).toBeLessThan(-10)
+    // Leave room for the sun's below-body label to fit after turning around.
+    await expect.poll(async () => (await pose()).position[2], { timeout: 15000 }).toBeLessThan(-25)
   } finally {
     await page.keyboard.up('w')
     await page.keyboard.up('Shift')
@@ -201,7 +203,7 @@ test('keeps callouts stable during ambient motion and synchronized with the came
         atlas: { x: number; y: number }
       }[] = []
       for (let i = 0; i < 35; i++) {
-        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+        if (i) await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
         const points = [
           ...document.querySelectorAll<HTMLElement>('.projected-label:not(.core-projected-label)'),
         ].map((element) => {
@@ -227,17 +229,16 @@ test('keeps callouts stable during ambient motion and synchronized with the came
       expect(point.y).toBeCloseTo(idle[0].points[index].y, 2)
     })
   const canvas = page.locator('canvas')
-  const initialPose = await canvas.getAttribute('data-camera-position')
   await page.getByRole('button', { name: 'Select Atlas', exact: true }).click()
-  expect(await canvas.getAttribute('data-camera-position')).toBe(initialPose)
+  await expect(canvas).toHaveAttribute('data-camera-moving', 'false')
   await page.getByRole('button', { name: 'Pause ambient motion', exact: true }).click()
   const bounds = (await canvas.boundingBox())!
   const recording = sample()
-  await page.locator('.stage').evaluate((element) => {
+  await canvas.evaluate((element) => {
     const bounds = element.getBoundingClientRect()
     return element.dispatchEvent(
       new WheelEvent('wheel', {
-        deltaY: -60,
+        deltaY: -160,
         clientX: bounds.x + bounds.width / 2,
         clientY: bounds.y + bounds.height / 2,
         bubbles: true,
@@ -450,7 +451,10 @@ test('provides a responsive directory on mobile and respects reduced motion', as
     page.getByRole('button', { name: 'Pause ambient motion', exact: true })
   ).toBeDisabled()
   await page.getByRole('button', { name: 'Inspect Prism', exact: true }).click()
-  await expect(page.getByRole('dialog', { name: 'Prism', exact: true })).toBeVisible()
+  await expect(page.getByRole('complementary', { name: 'Selected instrument' })).toContainText(
+    'Prism'
+  )
+  await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.keyboard.press('Escape')
   await page.getByRole('button', { name: 'Catalog studio', exact: true }).click()
   await expect(page.getByRole('dialog')).toBeVisible()

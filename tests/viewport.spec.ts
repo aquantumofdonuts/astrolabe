@@ -1,6 +1,27 @@
 import { expect, test } from '@playwright/test'
 import seed from '../public/catalog.json' with { type: 'json' }
 
+test('mobile preview notice, catalog editing, and the launchpad remain reachable', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.addInitScript(
+    (catalog) => localStorage.setItem('astrolabe.catalog.v1', JSON.stringify(catalog)),
+    seed
+  )
+  await page.goto('/')
+  await expect(page.locator('.local-preview-banner')).toBeVisible()
+  const banner = (await page.locator('.local-preview-banner').boundingBox())!
+  const studio = (await page
+    .getByRole('button', { name: 'Catalog studio', exact: true })
+    .boundingBox())!
+  expect(studio.y + studio.height).toBeLessThanOrEqual(banner.y)
+  await page.getByRole('button', { name: 'Catalog studio', exact: true }).click({ trial: true })
+  const dock = (await page.getByRole('region', { name: 'Quick launch' }).boundingBox())!
+  expect(dock.y + dock.height).toBeLessThanOrEqual(844)
+  await page.screenshot({ path: '/tmp/astrolabe-mobile-preview-final.png' })
+})
+
 test('camera controls stay inside desktop, scaled, short, and mobile viewports', async ({
   page,
 }) => {

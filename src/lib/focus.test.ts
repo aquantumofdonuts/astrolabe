@@ -25,7 +25,7 @@ it('frames every category member including its physical silhouette', () => {
   }
 })
 
-it('targets uploaded image globes and handles empty or removed categories', () => {
+it('targets uploaded logo frames and handles empty or removed categories', () => {
   const catalog = validateCatalog(seed)
   catalog.sites[0].image = 'data:image/png;base64,AA=='
   catalog.categories.push({ ...catalog.categories[0], id: 'empty', name: 'Empty' })
@@ -35,7 +35,7 @@ it('targets uploaded image globes and handles empty or removed categories', () =
     .find((item) => item.id === catalog.sites[0].id)!
   const target = selectionTarget(catalog, stations, { kind: 'node', id: item.id, key: 1 })!
   expect(target.position).toEqual(item.position)
-  expect(target.radius).toBeCloseTo(1.12 * item.scale)
+  expect(target.radius).toBeCloseTo(1.65 * item.scale)
   expect(
     selectionTarget(catalog, stations, { kind: 'category', id: 'empty', key: 1 })?.radius
   ).toBeGreaterThan(0)

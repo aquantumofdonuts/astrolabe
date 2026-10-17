@@ -14,6 +14,7 @@ test('Directory closes details even with a search active, and returning does not
   const directory = page.getByRole('button', { name: 'Directory', exact: true })
   await expect(page.locator('canvas')).toHaveAttribute('data-camera-moving', 'false')
   await search.fill('Sentinel')
+  await page.getByRole('button', { name: 'Inspect Sentinel', exact: true }).click()
   await expect(inspector).toBeVisible()
   await page.mouse.click(8, 8) // Dismiss the popover without clearing the query or selection.
   await directory.click()
@@ -40,6 +41,7 @@ test('category, collection, empty search, and home navigation dismiss old instru
   const search = page.getByRole('combobox', { name: 'Search instruments' })
   for (const destination of ['category', 'favorites', 'recent', 'empty search', 'home']) {
     await search.fill('Sentinel')
+    await page.getByRole('button', { name: 'Inspect Sentinel', exact: true }).click()
     await expect(inspector).toBeVisible()
     if (destination === 'category')
       await page
@@ -87,6 +89,7 @@ test('removing the selected instrument or restoring the catalog closes details w
   const inspector = page.getByRole('complementary', { name: 'Selected instrument' })
   const search = page.getByRole('combobox', { name: 'Search instruments' })
   await search.fill('Sentinel')
+  await page.getByRole('button', { name: 'Inspect Sentinel', exact: true }).click()
   await expect(inspector).toBeVisible()
   await search.fill('')
   await page.getByRole('button', { name: 'Catalog studio', exact: true }).click()
@@ -97,6 +100,7 @@ test('removing the selected instrument or restoring the catalog closes details w
   await studio.getByRole('button', { name: 'Close dialog' }).click()
   await expect(inspector).toBeHidden()
   await search.fill('Pulse')
+  await page.getByRole('button', { name: 'Inspect Pulse', exact: true }).click()
   await expect(inspector).toBeVisible()
   await search.fill('')
   await page.getByRole('button', { name: 'Catalog studio', exact: true }).click()

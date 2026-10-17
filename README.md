@@ -1,6 +1,17 @@
 # Astrolabe
 
-A self-hostable observatory for your department’s tools. A freely navigable Three.js observatory provides the exploration; task-oriented search, a complete directory, and direct launch links keep everything reachable.
+A self-hostable link portal for your department’s tools, presented as a space observatory. Search by task, launch a favorite, browse the complete Directory, or explore the constellations. Finding and opening a tool stays one click away.
+
+![Astrolabe overview with mapped sample logos, constellation labels, and the persistent launchpad](docs/screenshots/observatory.png)
+
+## What it offers
+
+- **Find and launch:** task descriptions, keywords, typo-tolerant search, keyboard shortcuts, and direct links from search, Directory, scene labels, and the persistent launchpad.
+- **Your tools in orbit:** uploaded logos remain readable inside detailed orbital housings. Faint plasma wisps and connecting filaments group related sites; category labels frame each constellation.
+- **Inspect beside the scene:** tool details open alongside the selected destination on larger screens and below the scene on phones. The destination and its animation remain visible.
+- **A personal launchpad:** pin and reorder favorites, return to recent tools, and preview descriptions by hovering or focusing a tool.
+- **A view that suits you:** choose your startup view and collection, graphics quality, ambient motion, and idle tours. Reduced motion and a complete Directory fallback keep tools accessible.
+- **A catalog you control:** edit tools and categories, upload images, import/export JSON, preview changes locally, or publish live with the included server.
 
 The included catalog contains 15 fictional instruments across five editable categories. All sample URLs are `null`, so launching a sample opens a clearly marked demo preview. Add your own HTTP/HTTPS destinations through Catalog studio or by editing `public/catalog.json`. A small Node.js server supports live catalog saves; static hosting also works with import/export and local previews. There are no built-in accounts, live health checks, or shared preference database.
 
@@ -32,7 +43,7 @@ npm run test:server
 npx prettier --check README.md
 ```
 
-Unit tests cover catalog validation and search, portable image validation, constellation placement, camera movement, focus framing, and HUD label projection.
+Unit tests cover catalog validation and search, portable image validation, personal preferences, constellation placement and plasma connections, camera movement, focus framing, and HUD label projection.
 
 For browser tests, install Playwright’s Chromium unless a usable Chrome/Chromium executable is already available:
 
@@ -47,7 +58,7 @@ On Linux, `npx playwright install --with-deps chromium` also installs required s
 ASTROLABE_TEST_BASE_URL=http://127.0.0.1:8080 npm run test:e2e
 ```
 
-Browser tests cover scene selection, camera controls and boundaries, label stability, search and keyboard launching, favorites, catalog editing/import/export, live saves and cross-browser updates, globe images, responsive layouts, reduced motion, and WebGL fallback. They use software-rendering flags for Chromium; assess graphics performance separately on the devices that will run the portal.
+Browser tests cover scene selection, camera controls and boundaries, label stability, search and native link launching (including middle-click), keyboard inspection and focus return, favorites, catalog editing/import/export, live saves and cross-browser updates, destination images, launchpad ordering, responsive layouts, reduced motion, and WebGL fallback. They use software-rendering flags for Chromium; assess graphics performance separately on the devices that will run the portal.
 
 `npm run format` formats source, tests, configuration, the sample catalog, and this README in place.
 
@@ -114,13 +125,13 @@ The schema and runtime validation live in [`src/lib/catalog.ts`](src/lib/catalog
 
 Keep IDs stable because favorites and launch history refer to them. Both category and instrument `icon` fields accept: `radar`, `network`, `terminal`, `bot`, `activity`, `shield`, `workflow`, `database`, `code`, `search`, `globe`, `sparkles`.
 
-### Globe images
+### Destination images
 
-In **Catalog studio → Instruments → Globe image**, upload PNG, JPEG, WebP, GIF, AVIF, BMP, or ICO files up to 10 MiB (8192 pixels per side / 32 megapixels maximum). Browser decoding and Canvas resampling normalize them to a square WebP thumbnail, at most 512 × 512 with a complete data URL of at most 128 KiB; JPEG is the fallback when WebP encoding is unavailable. Images retain their aspect ratio, fit within a dark padded surface, and lose embedded metadata. Animated formats use a still frame. No upload server or ImageMagick installation is required.
+In **Catalog studio → Instruments → Destination image**, upload PNG, JPEG, WebP, GIF, AVIF, BMP, or ICO files up to 10 MiB (8192 pixels per side / 32 megapixels maximum). Browser decoding and Canvas resampling normalize them to a square WebP thumbnail, at most 512 × 512 with a complete data URL of at most 128 KiB; JPEG is the fallback when WebP encoding is unavailable. Images retain their aspect ratio, fit within a dark padded surface, and lose embedded metadata. Animated formats use a still frame. No upload server or ImageMagick installation is required.
 
-Assigned images replace any planetary or station model with a rotating globe. The image repeats on both hemispheres so an icon is recognizable from either side, with atmosphere, day/night shading, and animated night-side lights preserved. **Remove globe image** restores the original model. Existing node images can also be assigned to another instrument. Thumbnails appear in the editor, search, and Directory.
+Assigned images become illuminated emblems inside dimensional orbital housings. The complete image faces the camera, preserving logos without spherical distortion or night-side shading. Category-colored rings and slowly moving mechanical details surround the artwork; each instrument ID determines its housing variant. Existing embedded catalog images work automatically, with no migration or reupload. Tools without images retain their procedural planets and stations. **Remove destination image** restores the original model. Existing node images can also be assigned to another instrument. Thumbnails appear in the editor, search, and Directory.
 
-The optional instrument `image` field stores a normalized PNG/JPEG/WebP data URL inside the catalog. Save publishes it to the shared catalog; Apply local preview keeps it in this browser. Export/import includes the images with no separate asset files. Catalog studio’s file importer accepts up to 28 MiB. Browser storage has a smaller browser-dependent quota: if a preview cannot be persisted, the editor explicitly reports a session-only preview and prompts export. Uploaded originals are never retained. Invalid image decoding falls back to a procedural globe without taking down the scene.
+The optional instrument `image` field stores a normalized PNG/JPEG/WebP data URL inside the catalog. Save publishes it to the shared catalog; Apply local preview keeps it in this browser. Export/import includes the images with no separate asset files. Catalog studio’s file importer accepts up to 28 MiB. Browser storage has a smaller browser-dependent quota: if a preview cannot be persisted, the editor explicitly reports a session-only preview and prompts export. Uploaded originals are never retained. Invalid image decoding leaves a category-colored placeholder inside the orbital housing without taking down the scene.
 
 The schema accepts up to 200 instruments, but the included 3D layout is demonstrated with 15. Schema limits do not guarantee a readable or performant 3D scene at maximum capacity. Use Directory for larger collections and evaluate your catalog on target devices.
 
@@ -158,37 +169,67 @@ Fonts and generated graphics are served locally; static hosting requires no runt
 Choose **Help** in the header (or press `?`) for a brief camera guide.
 
 - **Orbit:** left-drag around the point where you press. Rotation is unrestricted, including over the poles. **Pan:** right-drag, middle-drag, or Shift-drag. **Zoom:** scroll toward the pointer, or use +/− at the current focus.
-- **Select:** click an instrument or its name to focus and inspect it; click a category name to frame its group. Double-click a surface to move closer. A fresh gesture interrupts camera travel.
+- **Select:** click an instrument or its name to focus and inspect it; click a category name to frame its group. Hover or focus a tool name to reveal a launch arrow and preview its description in the dock. The arrow launches directly. Double-click a surface to move closer. A fresh gesture interrupts camera travel.
 - **Fly:** click empty scene space, then use WASD to move, R/F or E/Q for up/down, arrow keys to aim, and Shift to boost. Flight stays inside the scene boundary.
-- **Touch:** one finger orbits; two fingers pan and pinch to zoom. Tap an instrument’s name to select it.
+- **Touch:** one finger orbits; two fingers pan and pinch to zoom. Tap an instrument’s name in the scene list to inspect it, or its separate arrow to launch directly.
 - **Reset:** use Reset camera or Home to return to the overview. Reduced motion makes camera transitions immediate.
 
-- Search with `Ctrl/⌘ K` or `/`. Results match every word across names, descriptions, category names/IDs, and keywords. Arrow keys select a result; Enter launches it immediately.
-- Select a node to inspect it, then launch from the details panel (a focused dialog on smaller screens). Directory and the launchpad provide direct links.
-- Star instruments to personalize the launchpad. It shows up to four favorites in catalog order, falling back to up to four featured instruments when there are no favorites. Favorites and the 20 most recent distinct launches persist in this browser when storage is available, independently of the shared catalog.
-- Directory is the initial view below 900 pixels wide and the automatic fallback when WebGL 2 or scene initialization is unavailable. Switching to it unloads the 3D renderer.
+- Search with `Ctrl/⌘ K` or `/`. Results match every word across names, descriptions, category names/IDs, and keywords. Names and keywords also tolerate a single typo in words of at least four characters; exact matches rank first. Arrow keys select a result; Enter or clicking its name launches it immediately. Search results include task descriptions, and a separate Inspect button opens details. Search quietly emphasizes matching destinations without moving the camera or opening details automatically.
+- Select a node to inspect it, then launch from the details panel. Scene inspection stays beside the animation, or below it on phones, without a modal backdrop. Small-screen Directory inspection uses a focused dialog. Keyboard inspection focuses the launch control; closing details returns focus to the originating control. Pointer inspection preserves the current focus. Directory and the launchpad provide direct links.
+- Real destinations use native links, including middle-click and browser context menus. Launching briefly shows a check mark and an opening acknowledgement in the dock, also announced to screen readers. The destination opens immediately. Hover and keyboard focus independently preview tool descriptions; leaving a hovered tool restores the focused tool's description.
+- Star instruments to personalize the persistent launchpad, available in both views and during 3D loading. Favorites appear in the order you add them; use Arrange to move or remove them. The dock scrolls horizontally for larger collections, falls back to up to six featured instruments when there are no favorites, and shows up to two additional recent tools on wide displays. Favorites and the 20 most recent distinct launches persist in this browser when storage is available, independently of the shared catalog.
+- Directory is the default initial view below 900 pixels wide and the automatic fallback when WebGL 2 or scene initialization is unavailable. Switching to it unloads the 3D renderer.
+- **View preferences** (the settings icon beside Help) lets each teammate choose a startup view and collection, graphics quality, ambient motion, and idle tours. Startup choices apply on the next visit; graphics and motion apply immediately. Preferences stay in this browser, independently of the shared catalog. Reset restores view defaults while retaining favorites, launch history, and catalog data. Storage failures leave preferences usable for the current session and show a notification.
 - **Quality: light** disables bloom and dynamic shadows and reduces pixel density and star count. The preference persists locally. All tools remain available in both quality modes.
-- **Idle tour:** after 45 seconds without input, the camera frames the complete system and slowly orbits it. Mouse, keyboard, or touch input immediately restores the initial overview. Tours wait for loading to finish and stay off while motion is paused, reduced motion is enabled, a dialog is open, or the tab is hidden.
+- **Idle tour:** after 45 seconds without input, the camera frames the complete system and slowly orbits it. Mouse, keyboard, or touch input immediately restores your previous camera position and focus. Tours can be disabled in View preferences. They wait for loading to finish and stay off while inspecting a tool, searching, filtering a collection/category, motion is paused, reduced motion is enabled, preferences or a dialog are open, or the tab is hidden.
 - Ambient motion can be paused. OS reduced-motion preferences suppress it automatically. Keyboard focus, native modal focus trapping, a skip link, and named controls support operation without a mouse.
 
 ## Implementation
 
+Styles have three owners: `src/appearance.css` defines typography, colors, and surfaces; `src/layout.css` defines geometry and responsive behavior; `src/motion.css` defines transitions, transforms, and keyframes. Keep new declarations in their corresponding file and retain reduced-motion support.
+
+Constellations use faint category-colored plasma wisps and a sparse set of curved filaments between their actual sites. Filaments stop outside the destination silhouettes. These grouping cues have no click handlers or picking surfaces; category names remain the controls for framing a group. Empty categories add no field, and single-site groups add no connecting lines. Selection and search dim the atmosphere, while pause and reduced motion freeze it.
+
+Site nodes and the primary star are the scene's solid objects. Uploaded logos stay flat and readable inside layered, machined orbital housings with brushed surface detail, recessed grooves, fasteners, fine scale markings, and beveled mechanical parts. Warm key lighting, cool rim light, and locally generated reflection cards give the housings depth. A quieter corona and dust lanes in the distant nebula keep the foreground destinations prominent. Image uploads, category colors, and the catalog format work as before.
+
 React 19, TypeScript, and Vite; Three.js through React Three Fiber. The [3D scene](src/components/Observatory.tsx) loads on demand, with locally generated geometry, shaders, and bundled fonts.
 
-Current UI, captured with Playwright:
+## Screenshots
 
-**Observatory**
+Captured from the production build with Playwright at 1440 × 960 and 390 × 844. The gallery uses the fictional catalog with sample uploaded artwork and example URLs. These screenshot fixtures are not saved to `public/catalog.json`.
 
-![Astrolabe overview with the primary star, planetary destinations, constellation labels, and camera controls](docs/screenshots/observatory.png)
+**Task search**
 
-**Instrument focus and details**
+Search names, descriptions, categories, and keywords. Launch from the result or choose Inspect for details.
 
-![Sentinel selected in the observatory, with a close camera view and its instrument details](docs/screenshots/instrument-focus.png)
+![Search results for network, with task descriptions and separate direct-launch and Inspect controls](docs/screenshots/task-search.png)
+
+**Direct scene launch and tool description preview**
+
+![A focused launch arrow beside Sentinel, with its description visible in the persistent dock](docs/screenshots/direct-launch.png)
+
+**Instrument focus and side inspection**
+
+![Sentinel selected beside its details panel, with its mapped logo and orbital housing visible in the scene](docs/screenshots/instrument-focus.png)
+
+**Intelligence constellation with uploaded logos**
+
+![The Intelligence constellation with faint plasma grouping and readable logo destinations](docs/screenshots/intelligence-district.png)
+
+**Directory and launch acknowledgement**
+
+The Directory offers the same tools as direct links. Opening a destination briefly shows a check mark and an acknowledgement in the launchpad.
+
+![Directory cards with a launch check mark on Sentinel and an opening acknowledgement in the persistent launchpad](docs/screenshots/launch-feedback.png)
 
 **Catalog studio**
 
-![Catalog studio showing instrument editing, globe image upload, and catalog import, export, local preview, and live Save](docs/screenshots/catalog-studio.png)
+![Catalog studio showing instrument editing, destination image upload, and catalog import, export, local preview, and live Save](docs/screenshots/catalog-studio.png)
 
 **Mobile Directory**
 
-<img src="docs/screenshots/mobile-directory.png" alt="Mobile Directory with the visible Help button, category navigation, and instrument cards" width="390" />
+<img src="docs/screenshots/mobile-directory.png" alt="Mobile Directory with mapped sample logos, category navigation, direct launch links, and the persistent launchpad" width="390" />
+
+**Personal view preferences on mobile**
+
+<img src="docs/screenshots/personal-view-mobile.png" alt="Mobile preferences for startup view, collection, graphics quality, ambient motion, and idle tours" width="390" />

@@ -266,6 +266,9 @@ test('native two-finger pan and pinch preserve orientation and end without drift
   await page.setViewportSize({ width: 390, height: 844 })
   await page.reload()
   await page.getByRole('button', { name: 'Astrolabe', exact: true }).click()
+  await expect(page.locator('.scene-experience')).toHaveAttribute('data-scene-state', 'ready', {
+    timeout: 30000,
+  })
   await expect(page.locator('canvas')).toHaveAttribute('data-camera-moving', 'false')
   const cdp = await page.context().newCDPSession(page)
   await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 2 })

@@ -61,16 +61,15 @@ test('selection dims rendered planets, habitats, and rings while preserving the 
     )
   }
   const before = await capture()
-  // Search changes selection without moving the camera, making pixels directly comparable.
+  // Search highlights matches without moving the camera or opening details.
   const search = page.getByRole('combobox', { name: 'Search instruments' })
   await search.fill('Sentinel')
-  await expect(page.locator('.projected-label[data-selection-active="true"]')).toHaveCount(1)
+  await expect(page.locator('.inspector')).toBeHidden()
   const after = await capture()
   expect(await canvas.getAttribute('data-camera-position')).toBe(initialPose)
   expect(after[0]).toBeGreaterThanOrEqual(before[0] * 0.98)
   for (const index of [1, 2, 3]) expect(after[index]).toBeLessThan(before[index] * 0.9)
   expect(after[4]).toBeCloseTo(before[4], 1)
-  await page.getByRole('button', { name: 'Close instrument details' }).click()
   await search.fill('')
   const restored = await capture()
   for (const index of [1, 2, 3, 4]) expect(restored[index]).toBeCloseTo(before[index], 1)
@@ -192,12 +191,12 @@ test('node, group, and search selections replace previous halos and reticles whi
   await expect(page.locator('.projected-label[data-category-active="true"]')).toHaveCount(0)
   await expect(reticle('Sentinel')).toHaveCSS('opacity', '1')
 
-  // Search must replace both the node's glow and its targeting corners, even without a flight.
+  // Search clears inspection and quietly emphasizes matches without a targeting reticle.
   await search.fill('Pulse')
-  await expect(highlighted).toHaveCount(1)
-  await expect(highlighted).toContainText('Pulse')
+  await expect(highlighted).toHaveCount(0)
+  await expect(page.locator('.inspector')).toBeHidden()
   await expect(reticle('Sentinel')).toHaveCSS('opacity', '0')
-  await expect(reticle('Pulse')).toHaveCSS('opacity', '1')
+  await expect(reticle('Pulse')).toHaveCSS('opacity', '0')
 
   await category('Automate').click()
   await expect(search).toHaveValue('')
@@ -210,8 +209,7 @@ test('node, group, and search selections replace previous halos and reticles whi
   await expect(highlighted).toHaveCount(3)
   await expect(highlighted).toHaveText([/Atlas/, /Vault/, /Waypoint/])
   await search.fill('Sentinel')
-  await expect(highlighted).toHaveCount(1)
-  await expect(highlighted).toContainText('Sentinel')
+  await expect(highlighted).toHaveCount(0)
   await expect(page.locator('.projected-label[data-category-active="true"]')).toHaveCount(0)
   await search.fill('no-such-instrument')
   await expect(highlighted).toHaveCount(0)

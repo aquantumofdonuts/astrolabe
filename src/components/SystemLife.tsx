@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import type { Constellation } from '../lib/orbits'
 
 const noHit = () => {}
 const billboard = `varying vec2 p;void main(){p=uv*2.-1.;vec4 c=modelViewMatrix*vec4(0,0,0,1);c.xy+=position.xy;gl_Position=projectionMatrix*c;}`
@@ -57,109 +56,9 @@ export function DestinationGlow({
       float beacon=pow(max(0.,1.-length(p-vec2(.39,.25))*16.),2.);
       float beat=pow(max(0.,sin(time*1.6)),12.);
       float rim=exp(-pow((r-.375)*35.,2.))*.08;
-      gl_FragColor=vec4(tint*1.35,(halo*.9+rim)*focus*pulse+beacon*(.08+beat*.38));}`}
+      gl_FragColor=vec4(tint*1.35,(halo*.24+rim*.7)*focus*pulse+beacon*(.08+beat*.38));}`}
       />
     </mesh>
-  )
-}
-
-/** Short moving traces only: no permanent route wireframe. Curves clear the primary star. */
-function Traffic({
-  stations,
-  colors,
-  paused,
-  economical,
-  category,
-}: {
-  stations: Constellation[]
-  colors: string[]
-  paused: boolean
-  economical: boolean
-  category: string
-}) {
-  const time = useRef(0)
-  const data = useMemo(() => {
-    const routes: {
-      curve: THREE.QuadraticBezierCurve3
-      color: THREE.Color
-      category: string
-      phase: number
-      duration: number
-    }[] = []
-    stations.forEach((station, i) => {
-      station.instruments.forEach((item, j) => {
-        const local = station.instruments[(j + 1) % station.instruments.length]
-        const remote =
-          stations[(i + 1) % stations.length]?.instruments[
-            j % (stations[(i + 1) % stations.length]?.instruments.length || 1)
-          ]
-        for (const [k, target] of [local, ...(economical ? [] : [remote])].entries()) {
-          if (!target || target.id === item.id) continue
-          const a = new THREE.Vector3(...item.position),
-            b = new THREE.Vector3(...target.position)
-          const middle = a.clone().add(b).multiplyScalar(0.5)
-          if (middle.length() < 8) middle.normalize().multiplyScalar(9)
-          middle.y += (k ? 4 : 1.8) * (i % 2 ? -1 : 1)
-          routes.push({
-            curve: new THREE.QuadraticBezierCurve3(a, middle, b),
-            color: new THREE.Color(colors[i]),
-            category: station.categoryId,
-            phase: (i * 0.173 + j * 0.317 + k * 0.41) % 1,
-            duration: 12 + a.distanceTo(b) * 0.45,
-          })
-        }
-      })
-    })
-    const segments = 12
-    const positions = new Float32Array(routes.length * segments * 6)
-    const colorsArray = new Float32Array(positions.length)
-    const geometry = new THREE.BufferGeometry()
-    geometry.setAttribute(
-      'position',
-      new THREE.BufferAttribute(positions, 3).setUsage(THREE.DynamicDrawUsage)
-    )
-    geometry.setAttribute(
-      'color',
-      new THREE.BufferAttribute(colorsArray, 3).setUsage(THREE.DynamicDrawUsage)
-    )
-    return { routes, geometry, positions, colorsArray, segments, point: new THREE.Vector3() }
-  }, [stations, colors, economical])
-  useEffect(() => () => data.geometry.dispose(), [data])
-  useFrame((_, dt) => {
-    if (!paused) time.current += Math.min(dt, 0.05)
-    const { routes, positions, colorsArray, point, segments } = data
-    routes.forEach((route, i) => {
-      const progress = (time.current / route.duration + route.phase) % 1
-      const fade = Math.min(1, progress * 14, (1 - progress) * 14)
-      const emphasis = category === 'all' ? 0.85 : route.category === category ? 1.8 : 0.16
-      for (let s = 0; s < segments; s++) {
-        for (let end = 0; end < 2; end++) {
-          const index = (i * segments * 2 + s * 2 + end) * 3
-          const fraction = (s + end) / segments
-          route.curve
-            .getPoint(Math.max(0, progress - (1 - fraction) * 0.07), point)
-            .toArray(positions, index)
-          const brightness = fraction * fraction * fade * emphasis
-          colorsArray[index] = route.color.r * brightness
-          colorsArray[index + 1] = route.color.g * brightness
-          colorsArray[index + 2] = route.color.b * brightness
-        }
-      }
-    })
-    data.geometry.attributes.position.needsUpdate = true
-    data.geometry.attributes.color.needsUpdate = true
-  })
-  return (
-    <lineSegments geometry={data.geometry} raycast={noHit} frustumCulled={false}>
-      <lineBasicMaterial
-        vertexColors
-        transparent
-        opacity={0.85}
-        blending={THREE.AdditiveBlending}
-        depthWrite={false}
-        toneMapped={false}
-      />
-    </lineSegments>
   )
 }
 
@@ -194,90 +93,23 @@ function Comet({ paused, offset }: { paused: boolean; offset: number }) {
   )
 }
 
-/** A slow freighter crosses the far hemisphere, with a long quiet interval between passages. */
-function OutboundVessel({ paused }: { paused: boolean }) {
-  const group = useRef<THREE.Group>(null)
-  const elapsed = useRef(14)
-  const engine = useRef<THREE.MeshBasicMaterial>(null)
-  useFrame((_, dt) => {
-    if (!paused) elapsed.current += Math.min(dt, 0.05)
-    const t = elapsed.current % 110
-    if (!group.current) return
-    group.current.visible = t < 52
-    group.current.position.set(-67 + t * 2.6, 23 + Math.sin(t * 0.04) * 5, -51)
-    if (engine.current) engine.current.opacity = 0.7 + Math.sin(elapsed.current * 2) * 0.12
-  })
-  return (
-    <group ref={group} rotation={[0.15, -0.15, -0.12]} scale={1.1}>
-      <mesh raycast={noHit}>
-        <boxGeometry args={[5, 0.45, 0.55]} />
-        <meshStandardMaterial color="#344651" metalness={0.75} roughness={0.5} />
-      </mesh>
-      <mesh position={[2.2, 0.15, 0]} rotation={[0, 0, -Math.PI / 2]} raycast={noHit}>
-        <coneGeometry args={[0.55, 1.8, 5]} />
-        <meshStandardMaterial color="#647985" metalness={0.65} roughness={0.55} />
-      </mesh>
-      {[-1, 0, 1].map((i) => (
-        <group key={i} position={[i * 1.15, 0.1, 0]}>
-          <mesh raycast={noHit}>
-            <boxGeometry args={[0.85, 0.8, 1.4]} />
-            <meshStandardMaterial color="#53616b" metalness={0.5} roughness={0.65} />
-          </mesh>
-          <mesh position={[0.1, 0.47, 0.6]} raycast={noHit}>
-            <boxGeometry args={[0.35, 0.035, 0.07]} />
-            <meshBasicMaterial color={[1.2, 0.8, 0.35]} toneMapped={false} />
-          </mesh>
-        </group>
-      ))}
-      <mesh position={[-2.9, 0, 0]} raycast={noHit}>
-        <planeGeometry args={[2.6, 1.5]} />
-        <shaderMaterial
-          vertexShader={billboard}
-          transparent
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-          fragmentShader={`varying vec2 p;void main(){float a=exp(-length(p*vec2(1.,2.))*4.);gl_FragColor=vec4(.22,.65,1.,a*.8);}`}
-        />
-      </mesh>
-      <mesh position={[-2.55, 0, 0]} rotation={[0, Math.PI / 2, 0]} raycast={noHit}>
-        <circleGeometry args={[0.3, 16]} />
-        <meshBasicMaterial
-          ref={engine}
-          color={[0.4, 1.8, 3]}
-          toneMapped={false}
-          side={THREE.DoubleSide}
-          transparent
-        />
-      </mesh>
-    </group>
-  )
-}
-
 export default function SystemLife({
-  stations,
-  colors,
   paused,
   economical,
   category,
+  subdued,
 }: {
-  stations: Constellation[]
-  colors: string[]
   paused: boolean
   economical: boolean
   category: string
+  subdued: boolean
 }) {
   return (
     <group>
-      <Traffic
-        stations={stations}
-        colors={colors}
-        paused={paused}
-        economical={economical}
-        category={category}
-      />
-      <Comet paused={paused} offset={8} />
-      {!economical && <Comet paused={paused} offset={44} />}
-      <OutboundVessel paused={paused} />
+      <group visible={!subdued && category === 'all'}>
+        <Comet paused={paused} offset={8} />
+        {!economical && <Comet paused={paused} offset={44} />}
+      </group>
     </group>
   )
 }

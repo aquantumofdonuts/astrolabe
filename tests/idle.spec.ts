@@ -13,6 +13,7 @@ async function pose(page: Page) {
 }
 
 async function load(page: Page, viewport = { width: 1440, height: 960 }) {
+  await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') })
   await page.setViewportSize(viewport)
   await page.addInitScript(() => localStorage.setItem('astrolabe.economical', 'true'))
   await page.goto('/')
@@ -22,15 +23,22 @@ async function load(page: Page, viewport = { width: 1440, height: 960 }) {
     timeout: 30000,
   })
   await page.bringToFront()
-  await page.clock.install()
+  // Keep GPU/rendering wall time out of the 45-second inactivity boundary.
+  await page.clock.pauseAt(new Date('2026-01-01T00:10:00Z'))
   await page.mouse.move(8, 8) // Start a fresh inactivity timer controlled by Playwright's clock.
+  await page.clock.runFor(32)
   return pose(page)
 }
 
+async function advance(page: Page, milliseconds: number) {
+  await page.clock.fastForward(milliseconds)
+  await page.clock.runFor(32)
+}
+
 async function enterIdle(page: Page) {
-  await page.clock.fastForward(46_000)
+  await advance(page, 46_000)
   await expect(page.locator('canvas')).toHaveAttribute('data-camera-idle', 'true')
-  await page.clock.fastForward(1600)
+  await advance(page, 1600)
   await page.clock.runFor(30)
 }
 
@@ -46,21 +54,12 @@ function expectHome(
   ).toBeLessThan(0.000001)
 }
 
-test('idle starts after inactivity, clears selection, fits every body, and rotates without clipping', async ({
-  page,
-}) => {
+test('idle fits every body and rotates without clipping', async ({ page }) => {
   test.setTimeout(60000)
   const home = await load(page)
   const canvas = page.locator('canvas')
-  await page.getByRole('button', { name: 'Select Sentinel', exact: true }).click()
-  await page.clock.fastForward(44_000)
-  await expect(canvas).toHaveAttribute('data-camera-idle', 'false')
-  await page.clock.fastForward(2000)
-  await expect(canvas).toHaveAttribute('data-camera-idle', 'true')
-  await page.clock.fastForward(1600)
-  await page.clock.runFor(30)
+  await enterIdle(page)
   await expect(page.getByRole('complementary', { name: 'Selected instrument' })).toBeHidden()
-  await expect(page.locator('.projected-label[data-selection-active="true"]')).toHaveCount(0)
   const overview = systemOverview(
     validateCatalog(seed),
     buildConstellationLayout(validateCatalog(seed))
@@ -68,7 +67,7 @@ test('idle starts after inactivity, clears selection, fits every body, and rotat
   const rect = (await canvas.boundingBox())!
   const first = await pose(page)
   for (const elapsed of [2000, 60000, 120000]) {
-    await page.clock.fastForward(elapsed)
+    await advance(page, elapsed)
     await page.clock.runFor(30)
     const current = await pose(page)
     const camera = new PerspectiveCamera(42, rect.width / rect.height, 0.035, 10000)
@@ -111,10 +110,11 @@ test('mouse, keyboard, wheel, and touch immediately stop idle and restore the in
           new PointerEvent('pointerup', { pointerId: 9, pointerType: 'touch', bubbles: true })
         )
       })
-    await page.clock.runFor(30)
     await expect(page.locator('canvas')).toHaveAttribute('data-camera-idle', 'false')
+    // Wheel delivery is asynchronous; render only after the browser handled the input.
+    await page.clock.runFor(32)
     expectHome(await pose(page), home)
-    await page.clock.fastForward(44_000)
+    await advance(page, 44_000)
     await expect(page.locator('canvas')).toHaveAttribute('data-camera-idle', 'false')
   }
 })
@@ -126,33 +126,33 @@ test('held input, dialogs, pause, hidden tabs, and reduced motion prevent idle t
   await load(page)
   const canvas = page.locator('canvas')
   await page.mouse.down()
-  await page.clock.fastForward(90_000)
+  await advance(page, 90_000)
   await expect(canvas).toHaveAttribute('data-camera-idle', 'false')
   await page.mouse.up()
   await page.keyboard.down('Shift')
-  await page.clock.fastForward(90_000)
+  await advance(page, 90_000)
   await expect(canvas).toHaveAttribute('data-camera-idle', 'false')
   await page.keyboard.up('Shift')
   await page.getByRole('button', { name: 'Help', exact: true }).click()
-  await page.clock.fastForward(90_000)
+  await advance(page, 90_000)
   await expect(canvas).toHaveAttribute('data-camera-idle', 'false')
   await page.keyboard.press('Escape')
   await page.getByRole('button', { name: 'Pause ambient motion', exact: true }).click()
-  await page.clock.fastForward(90_000)
+  await advance(page, 90_000)
   await expect(canvas).toHaveAttribute('data-camera-idle', 'false')
   await page.getByRole('button', { name: 'Resume ambient motion', exact: true }).click()
   await page.evaluate(() => {
     Object.defineProperty(document, 'hidden', { configurable: true, value: true })
     document.dispatchEvent(new Event('visibilitychange'))
   })
-  await page.clock.fastForward(90_000)
+  await advance(page, 90_000)
   await expect(canvas).toHaveAttribute('data-camera-idle', 'false')
   await page.evaluate(() => {
     Object.defineProperty(document, 'hidden', { configurable: true, value: false })
     document.dispatchEvent(new Event('visibilitychange'))
   })
   await page.emulateMedia({ reducedMotion: 'reduce' })
-  await page.clock.fastForward(90_000)
+  await advance(page, 90_000)
   await expect(canvas).toHaveAttribute('data-camera-idle', 'false')
 })
 
@@ -163,7 +163,76 @@ test('idle framing fits the visible mobile scene and resets on resize', async ({
   const canvas = page.locator('canvas')
   await page.screenshot({ path: '/tmp/astrolabe-idle-mobile.png' })
   await page.setViewportSize({ width: 400, height: 844 })
-  await page.clock.runFor(30)
   await expect(canvas).toHaveAttribute('data-camera-idle', 'false')
+  await page.clock.runFor(32)
   expectHome(await pose(page), home)
+})
+
+test('inspection and filtered views retain their context after prolonged inactivity', async ({
+  page,
+}) => {
+  await load(page)
+  const canvas = page.locator('canvas')
+  await page.getByRole('button', { name: 'Select Sentinel', exact: true }).click()
+  await advance(page, 90_000)
+  await expect(canvas).toHaveAttribute('data-camera-idle', 'false')
+  await expect(page.getByRole('complementary', { name: 'Selected instrument' })).toBeVisible()
+  await page.getByRole('button', { name: 'Close instrument details' }).click()
+  await page
+    .locator('.category-nav')
+    .getByRole('button', { name: /Observe/ })
+    .click()
+  await advance(page, 90_000)
+  await expect(canvas).toHaveAttribute('data-camera-idle', 'false')
+  await expect(
+    page.locator('.category-nav').getByRole('button', { name: /Observe/ })
+  ).toHaveAttribute('aria-pressed', 'true')
+})
+
+test('leaving idle restores an inverted, manually panned camera and its focus', async ({
+  page,
+}) => {
+  test.setTimeout(60000)
+  await load(page)
+  const bounds = (await page.locator('canvas').boundingBox())!
+  await page.mouse.move(bounds.x + 100, bounds.y + 200)
+  await page.mouse.down({ button: 'right' })
+  await page.mouse.move(bounds.x + 180, bounds.y + 230, { steps: 3 })
+  await page.mouse.up({ button: 'right' })
+  await page.clock.runFor(30)
+  await page.mouse.move(bounds.x + 100, bounds.y + 120)
+  await page.mouse.down()
+  await page.mouse.move(bounds.x + 130, bounds.y + 120 + bounds.height * 0.65, { steps: 6 })
+  await page.mouse.up()
+  await page.clock.runFor(30)
+  const previous = await pose(page)
+  expect(
+    new Vector3(0, 1, 0).applyQuaternion(new Quaternion().fromArray(previous.quaternion)).y
+  ).toBeLessThan(0)
+  const focus = await page.locator('canvas').getAttribute('data-camera-focus')
+  await enterIdle(page)
+  await page.mouse.move(8, 8)
+  await page.clock.runFor(30)
+  expectHome(await pose(page), previous)
+  expect(await page.locator('canvas').getAttribute('data-camera-focus')).toBe(focus)
+})
+
+test('personal idle-tour preference disables tours until explicitly enabled again', async ({
+  page,
+}) => {
+  test.setTimeout(60000)
+  await load(page)
+  const configure = async (enabled: boolean) => {
+    await page.getByRole('button', { name: 'View preferences', exact: true }).click()
+    await page
+      .getByRole('region', { name: 'View preferences', exact: true })
+      .getByRole('checkbox', { name: /^Idle tour/ })
+      .setChecked(enabled)
+    await page.keyboard.press('Escape')
+  }
+  await configure(false)
+  await advance(page, 90_000)
+  await expect(page.locator('canvas')).toHaveAttribute('data-camera-idle', 'false')
+  await configure(true)
+  await enterIdle(page)
 })

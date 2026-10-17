@@ -93,7 +93,7 @@ export default function CatalogStudio({
         ...current,
         sites: current.sites.map((entry) => (entry.id === id ? { ...entry, image } : entry)),
       }))
-      setNotice('Image ready. Save or apply local preview to see it on the globe.')
+      setNotice('Image ready. Save or apply local preview to see it in its orbital frame.')
     } catch (error) {
       if (request === imageRequest.current) setError((error as Error).message)
     } finally {
@@ -396,20 +396,20 @@ export default function CatalogStudio({
                     </select>
                   </label>
                 </div>
-                <section className="node-image-editor" aria-label="Globe image">
+                <section className="node-image-editor" aria-label="Destination image">
                   <div className="node-image-preview">
                     {site.image ? (
-                      <img src={site.image} alt={`${site.name} globe image`} />
+                      <img src={site.image} alt={`${site.name} destination image`} />
                     ) : (
                       <span>No image assigned</span>
                     )}
                   </div>
                   <div>
                     <label>
-                      Globe image
+                      Destination image
                       <input
                         key={site.id}
-                        aria-label="Upload globe image"
+                        aria-label="Upload destination image"
                         type="file"
                         accept={NODE_IMAGE_ACCEPT}
                         disabled={imageBusy}
@@ -421,8 +421,9 @@ export default function CatalogStudio({
                       />
                     </label>
                     <p className="form-help">
-                      PNG, JPEG, WebP, GIF, AVIF, BMP or ICO · up to 10 MB. Your image wraps around
-                      a globe with night-side lights. Animated images use a still frame.
+                      PNG, JPEG, WebP, GIF, AVIF, BMP or ICO · up to 10 MB. Your image stays
+                      readable in an illuminated orbital frame that faces the camera. Animated
+                      images use a still frame.
                     </p>
                     {imageBusy && <p role="status">Preparing image…</p>}
                     {site.image && (
@@ -431,7 +432,7 @@ export default function CatalogStudio({
                         disabled={imageBusy}
                         onClick={() => updateSite({ image: undefined })}
                       >
-                        Remove globe image
+                        Remove destination image
                       </button>
                     )}
                     {draft.sites.some((entry) => entry.id !== site.id && entry.image) && (

@@ -40,14 +40,14 @@ it('fits the whole system tightly inside usable desktop, portrait, and expanded 
   }
 })
 
-it('includes uploaded globes, category callouts, and the sun in overview bounds', () => {
+it('includes uploaded logo frames, category callouts, and the sun in overview bounds', () => {
   const catalog = validateCatalog(seed)
   catalog.sites[1].image = 'embedded globe'
   const stations = buildConstellationLayout(catalog)
   const overview = systemOverview(catalog, stations)
   expect(overview.bodies).toHaveLength(catalog.sites.length + catalog.categories.length + 1)
   expect(overview.bodies[0].position.toArray()).toEqual([0, 0.25, -2])
-  expect(overview.bodies[3].radius).toBeCloseTo(1.12 * stations[0].instruments[1].scale)
+  expect(overview.bodies[3].radius).toBeCloseTo(1.65 * stations[0].instruments[1].scale)
   for (const body of overview.bodies)
     expect(body.position.distanceTo(overview.center) + body.radius).toBeLessThanOrEqual(
       overview.radius
