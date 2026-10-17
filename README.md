@@ -1,6 +1,6 @@
 # Astrolabe
 
-A self-hostable link portal for your department’s tools, presented as a space observatory. Search by task, launch a favorite, browse the complete Directory, or explore the constellations. Finding and opening a tool stays one click away.
+A self-hostable link portal for your department’s tools, presented as a space observatory. Search by task, launch a favorite, browse the complete Directory, or explore the constellations.
 
 ![Astrolabe overview with mapped sample logos, constellation labels, and the persistent launchpad](docs/screenshots/observatory.png)
 
@@ -66,7 +66,7 @@ Browser tests cover scene selection, camera controls and boundaries, label stabi
 
 The shared source of truth is **`public/catalog.json`**. It is fetched at runtime, independently of the JavaScript bundle. The 3D view, Directory, search results, instrument details, and launchpad read the same validated catalog. A valid deployed catalog must load before a saved browser preview can be restored.
 
-1. Open **Catalog studio** in the lower left (the settings button on mobile).
+1. Open **Catalog studio** from the navigation, beside the view switcher on phones.
 2. Edit a sample or choose **Add instrument**. Supply a name, useful description, category, icon, and URL. Add comma-separated search keywords as needed; leave the keyword field empty for no tags. Leave the URL blank for a demo preview. Feature a tool to make it eligible for the initial launchpad.
 3. Use **Categories** to change category names, colors, descriptions, and icons, or create a category. Reassign its instruments before deleting a category.
 4. Choose **Apply local preview** to try the changes. This saves an override in this browser’s local storage and displays a persistent preview banner. Other browsers still see the deployed catalog.
@@ -169,7 +169,7 @@ Fonts and generated graphics are served locally; static hosting requires no runt
 Choose **Help** in the header (or press `?`) for a brief camera guide.
 
 - **Orbit:** left-drag around the point where you press. Rotation is unrestricted, including over the poles. **Pan:** right-drag, middle-drag, or Shift-drag. **Zoom:** scroll toward the pointer, or use +/− at the current focus.
-- **Select:** click an instrument or its name to focus and inspect it; click a category name to frame its group. Hover or focus a tool name to reveal a launch arrow and preview its description in the dock. The arrow launches directly. Double-click a surface to move closer. A fresh gesture interrupts camera travel.
+- **Select:** click an instrument or its name to focus and inspect it; click a category name to frame its group. Click or tap empty scene space, or press Escape, to close instrument details while keeping the current camera position. Hover or focus a tool name to reveal a launch arrow and preview its description in the dock. The arrow launches directly. Double-click a surface to move closer. A fresh gesture interrupts camera travel.
 - **Fly:** click empty scene space, then use WASD to move, R/F or E/Q for up/down, arrow keys to aim, and Shift to boost. Flight stays inside the scene boundary.
 - **Touch:** one finger orbits; two fingers pan and pinch to zoom. Tap an instrument’s name in the scene list to inspect it, or its separate arrow to launch directly.
 - **Reset:** use Reset camera or Home to return to the overview. Reduced motion makes camera transitions immediate.
@@ -188,7 +188,7 @@ Choose **Help** in the header (or press `?`) for a brief camera guide.
 
 Styles have three owners: `src/appearance.css` defines typography, colors, and surfaces; `src/layout.css` defines geometry and responsive behavior; `src/motion.css` defines transitions, transforms, and keyframes. Keep new declarations in their corresponding file and retain reduced-motion support.
 
-Constellations use faint category-colored plasma wisps and a sparse set of curved filaments between their actual sites. Filaments stop outside the destination silhouettes. These grouping cues have no click handlers or picking surfaces; category names remain the controls for framing a group. Empty categories add no field, and single-site groups add no connecting lines. Selection and search dim the atmosphere, while pause and reduced motion freeze it.
+Constellations use faint category-colored plasma wisps and a sparse set of glowing ribbons between their actual sites. Each ribbon contains drifting strands, a brighter core, and a soft surrounding glow; its ends fade outside the destination silhouettes. These grouping cues have no click handlers or picking surfaces; category names remain the controls for framing a group. Empty categories add no field, and single-site groups add no connecting lines. The selected site's constellation stays illuminated while other groups dim. Search subdues the atmosphere, and pause and reduced motion freeze its flow.
 
 Site nodes and the primary star are the scene's solid objects. Uploaded logos stay flat and readable inside layered, machined orbital housings with brushed surface detail, recessed grooves, fasteners, fine scale markings, and beveled mechanical parts. Warm key lighting, cool rim light, and locally generated reflection cards give the housings depth. A quieter corona and dust lanes in the distant nebula keep the foreground destinations prominent. Image uploads, category colors, and the catalog format work as before.
 

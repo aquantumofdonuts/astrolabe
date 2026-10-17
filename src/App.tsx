@@ -744,6 +744,7 @@ export default function App() {
                   visit={visit}
                   onCategory={changeCategory}
                   onSelect={select}
+                  onDeselect={clearSelection}
                   launchingId={feedback?.id ?? null}
                   onLaunch={launch}
                   onRemember={rememberLaunch}
@@ -1252,7 +1253,8 @@ export default function App() {
               <dt>Select</dt>
               <dd>
                 Click an instrument or its name to focus and inspect it. Click a category name to
-                frame its group. Double-click a surface to move closer.
+                frame its group. Click empty space or press Escape to close instrument details.
+                Double-click a surface to move closer.
               </dd>
             </div>
             <div>

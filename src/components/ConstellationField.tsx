@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { Catalog } from '../lib/catalog'
@@ -38,53 +38,101 @@ export default function ConstellationField({
     }),
     [color, field.phase]
   )
-  const lines = useMemo(() => {
+  const ribbonMaterial = useRef<THREE.ShaderMaterial>(null)
+  const veilMaterial = useRef<THREE.ShaderMaterial>(null)
+  const animation = useRef({ time: field.phase, strength: 0 })
+  const ribbons = useMemo(() => {
     const vertices: number[] = []
+    const tangents: number[] = []
+    const uvs: number[] = []
+    const indices: number[] = []
     for (const thread of field.threads) {
       const curve = new THREE.QuadraticBezierCurve3(
         new THREE.Vector3(...thread.start),
         new THREE.Vector3(...thread.control),
         new THREE.Vector3(...thread.end)
       )
-      const points = curve.getPoints(40)
-      for (let i = 1; i < points.length; i++)
-        vertices.push(...points[i - 1].toArray(), ...points[i].toArray())
+      const offset = vertices.length / 3
+      const segments = 64
+      for (let i = 0; i <= segments; i++) {
+        const t = i / segments
+        const point = curve.getPoint(t).toArray()
+        const tangent = curve.getTangent(t).toArray()
+        vertices.push(...point, ...point)
+        tangents.push(...tangent, ...tangent)
+        uvs.push(t, -1, t, 1)
+        if (i < segments) {
+          const a = offset + i * 2
+          indices.push(a, a + 1, a + 2, a + 1, a + 3, a + 2)
+        }
+      }
     }
-    return new THREE.BufferGeometry().setAttribute(
-      'position',
-      new THREE.Float32BufferAttribute(vertices, 3)
-    )
+    const geometry = new THREE.BufferGeometry()
+      .setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3))
+      .setAttribute('tangent', new THREE.Float32BufferAttribute(tangents, 3))
+      .setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2))
+      .setIndex(indices)
+    geometry.computeBoundingSphere()
+    // Account for the glow width and the small displacement in the vertex shader.
+    geometry.boundingSphere!.radius += 0.5
+    return geometry
   }, [field])
-  useEffect(() => () => lines.dispose(), [lines])
-  const lineMaterial = useMemo(
-    () =>
-      new THREE.LineBasicMaterial({
-        color,
-        transparent: true,
-        opacity: 0,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-        toneMapped: false,
-      }),
-    [color]
-  )
-  useEffect(() => () => lineMaterial.dispose(), [lineMaterial])
+  useEffect(() => () => ribbons.dispose(), [ribbons])
   useFrame((_, delta) => {
-    const target = dimmed ? 0.09 : active ? 0.95 : 0.55
-    if (!paused) uniforms.time.value += Math.min(delta, 0.05)
-    uniforms.strength.value = paused
+    const target = dimmed ? 0.25 : active ? 1 : 0.65
+    const state = animation.current
+    if (!paused) state.time += Math.min(delta, 0.05)
+    state.strength = paused
       ? target
-      : THREE.MathUtils.damp(uniforms.strength.value, target, 5, Math.min(delta, 0.05))
-    lineMaterial.opacity = uniforms.strength.value * 0.19
-    if (Math.abs(uniforms.strength.value - target) > 0.001) invalidate()
+      : THREE.MathUtils.damp(state.strength, target, 5, Math.min(delta, 0.05))
+    // Fiber owns the live uniform objects. Updating the source props alone leaves
+    // the compiled material at its initial values after a React render.
+    for (const material of [ribbonMaterial.current, veilMaterial.current]) {
+      if (!material) continue
+      material.uniforms.time.value = state.time
+      material.uniforms.strength.value = state.strength
+    }
+    if (Math.abs(state.strength - target) > 0.001) invalidate()
   })
   if (!station.instruments.length) return null
   return (
     <group name={`constellation-field:${station.categoryId}`}>
-      <lineSegments geometry={lines} material={lineMaterial} raycast={noHit} />
+      {field.threads.length > 0 && (
+        <mesh geometry={ribbons} raycast={noHit}>
+          <shaderMaterial
+            ref={ribbonMaterial}
+            uniforms={uniforms}
+            transparent
+            depthWrite={false}
+            side={THREE.DoubleSide}
+            toneMapped={false}
+            blending={THREE.AdditiveBlending}
+            vertexShader={`attribute vec3 tangent;uniform float time;varying vec2 p;
+            void main(){p=uv;vec4 center=modelViewMatrix*vec4(position,1.);
+              vec3 along=mat3(modelViewMatrix)*tangent;
+              vec2 normal=length(along.xy)>.0001?normalize(vec2(-along.y,along.x)):vec2(1.,0.);
+              float envelope=sin(uv.x*3.14159265);
+              float sway=(sin(uv.x*19.-time*.42)*.035+sin(uv.x*37.+time*.27)*.018)*envelope;
+              center.xy+=normal*(uv.y*.34+sway);
+              gl_Position=projectionMatrix*center;}`}
+            fragmentShader={`varying vec2 p;uniform vec3 tint;uniform float time,strength;
+            void main(){float u=p.x,y=p.y;
+              float envelope=smoothstep(0.,.06,u)*(1.-smoothstep(.94,1.,u));
+              float curl=sin(u*22.-time*.55)*.14+sin(u*47.+time*.31)*.065;
+              float core=exp(-pow((y-curl)*18.,2.));
+              float strand=exp(-pow((y+sin(u*31.+time*.38)*.3)*24.,2.));
+              float flow=.72+.28*sin(u*35.-time*.9+sin(u*11.+time*.2));
+              float glow=exp(-pow(y*2.4,2.))*.16;
+              float alpha=(glow+core*.48+strand*.2)*flow*envelope*strength;
+              vec3 energy=mix(tint,vec3(.85,.95,1.),core*.5)*1.8;
+              gl_FragColor=vec4(energy,alpha);}`}
+          />
+        </mesh>
+      )}
       <mesh position={field.center} raycast={noHit}>
         <planeGeometry args={[field.radius * 2.6, field.radius * 2.6]} />
         <shaderMaterial
+          ref={veilMaterial}
           uniforms={uniforms}
           transparent
           depthWrite={false}

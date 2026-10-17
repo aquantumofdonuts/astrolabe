@@ -110,8 +110,11 @@ test('mouse, keyboard, wheel, and touch immediately stop idle and restore the in
           new PointerEvent('pointerup', { pointerId: 9, pointerType: 'touch', bubbles: true })
         )
       })
+    // Native wheel delivery can wait for a frame while the test clock is paused.
+    // Advance that frame before checking the event's effect on the camera.
+    await page.clock.runFor(32)
     await expect(page.locator('canvas')).toHaveAttribute('data-camera-idle', 'false')
-    // Wheel delivery is asynchronous; render only after the browser handled the input.
+    // Publish the restored pose after the asynchronously delivered event.
     await page.clock.runFor(32)
     expectHome(await pose(page), home)
     await advance(page, 44_000)

@@ -110,3 +110,84 @@ test('removing the selected instrument or restoring the catalog closes details w
   await expect(inspector).toBeHidden()
   await expect(page.locator('.orbital-node[aria-pressed="true"]')).toHaveCount(0)
 })
+
+test('empty-space clicks dismiss inspection, while body clicks and camera drags retain it', async ({
+  page,
+}) => {
+  const canvas = page.locator('canvas')
+  const inspector = page.getByRole('complementary', { name: 'Selected instrument' })
+  await page.getByRole('button', { name: 'Select Sentinel', exact: true }).click()
+  await expect(inspector).toBeVisible()
+  await expect(canvas).toHaveAttribute('data-camera-moving', 'false')
+  let bounds = (await canvas.boundingBox())!
+  await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2)
+  await expect(inspector).toBeVisible()
+  await expect(canvas).toHaveAttribute('data-camera-moving', 'false')
+  bounds = (await canvas.boundingBox())!
+  const blank = { x: bounds.x + 24, y: bounds.y + bounds.height / 2 }
+  await page.mouse.move(blank.x, blank.y)
+  await page.mouse.down()
+  await page.mouse.move(blank.x + 60, blank.y + 20, { steps: 6 })
+  await page.mouse.up()
+  await expect(inspector).toBeVisible()
+  const pose = await canvas.getAttribute('data-camera-position')
+  await page.mouse.click(blank.x, blank.y)
+  await expect(inspector).toBeHidden()
+  await expect(page.locator('.orbital-node[aria-pressed="true"]')).toHaveCount(0)
+  expect(await canvas.getAttribute('data-camera-position')).toBe(pose)
+  await expect(page.getByRole('region', { name: 'Free-flight camera', exact: true })).toBeFocused()
+})
+
+test('phone inspection survives pinch gestures and closes on an empty-space tap', async ({
+  browser,
+  baseURL,
+}) => {
+  const context = await browser.newContext({
+    baseURL,
+    viewport: { width: 390, height: 844 },
+    hasTouch: true,
+    reducedMotion: 'reduce',
+  })
+  try {
+    const phone = await context.newPage()
+    await phone.addInitScript(() => localStorage.setItem('astrolabe.economical', 'true'))
+    await phone.goto('/')
+    await phone.getByRole('button', { name: 'Astrolabe', exact: true }).click()
+    await phone.getByRole('button', { name: 'Inspect Sentinel', exact: true }).click()
+    const inspector = phone.getByRole('complementary', { name: 'Selected instrument' })
+    await expect(inspector).toBeVisible()
+    const canvas = phone.locator('canvas')
+    await expect(canvas).toHaveAttribute('data-camera-moving', 'false')
+    const bounds = (await canvas.boundingBox())!
+    const y = bounds.y + bounds.height / 2
+    const before = await canvas.getAttribute('data-camera-position')
+    const cdp = await context.newCDPSession(phone)
+    await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 2 })
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchStart',
+      touchPoints: [
+        { id: 1, x: bounds.x + 40, y },
+        { id: 2, x: bounds.x + 100, y },
+      ],
+    })
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [
+        { id: 1, x: bounds.x + 32, y: y + 8 },
+        { id: 2, x: bounds.x + 112, y: y + 8 },
+      ],
+    })
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchEnd',
+      touchPoints: [{ id: 1, x: bounds.x + 32, y: y + 8 }],
+    })
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+    await expect(canvas).not.toHaveAttribute('data-camera-position', before!)
+    await expect(inspector).toBeVisible()
+    await phone.touchscreen.tap(bounds.x + 24, bounds.y + bounds.height / 2)
+    await expect(inspector).toBeHidden()
+    await expect(phone.getByRole('dialog')).toHaveCount(0)
+  } finally {
+    await context.close()
+  }
+})

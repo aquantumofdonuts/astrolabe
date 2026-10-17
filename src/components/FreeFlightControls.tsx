@@ -70,6 +70,7 @@ type Props = {
   overview: Overview
   idleEnabled: boolean
   onIdleStart: () => void
+  onEmptyClick: () => void
 }
 
 export default function FreeFlightControls({
@@ -84,6 +85,7 @@ export default function FreeFlightControls({
   overview,
   idleEnabled,
   onIdleStart,
+  onEmptyClick,
 }: Props) {
   const { camera, gl, invalidate, scene, size } = useThree()
   const flight = useMemo(() => new FlightController(radius), [radius])
@@ -94,6 +96,10 @@ export default function FreeFlightControls({
   const keyVelocity = useRef(new Vector3())
   const forward = useMemo(() => new Vector3(), [])
   const idle = useRef<IdleOrbit | null>(null)
+  const emptyClick = useRef(onEmptyClick)
+  useEffect(() => {
+    emptyClick.current = onEmptyClick
+  }, [onEmptyClick])
   const travelScale = homeDistance / 22
   const homePose = useMemo(() => {
     const position = new Vector3(0, 0.3, homeDistance)
@@ -440,7 +446,17 @@ export default function FreeFlightControls({
       invalidate()
     }
     const up = (e: PointerEvent) => {
-      if (!pointers.has(e.pointerId)) return
+      const pointer = pointers.get(e.pointerId)
+      if (!pointer) return
+      const emptyTap =
+        e.type === 'pointerup' &&
+        e.pointerType === 'touch' &&
+        pointers.size === 1 &&
+        !dragging &&
+        !suppressClick &&
+        !pointer.pan &&
+        Math.hypot(e.clientX - pointer.startX, e.clientY - pointer.startY) < 4 &&
+        !pick(e.clientX, e.clientY).hit
       pointers.delete(e.pointerId)
       if (element.hasPointerCapture(e.pointerId)) element.releasePointerCapture(e.pointerId)
       if (pointers.size) {
@@ -453,6 +469,12 @@ export default function FreeFlightControls({
         dragging = false
         setMode('idle')
       }
+      if (emptyTap) {
+        // Touch navigation prevents compatibility mouse events. Dismiss on the
+        // completed tap, and consume a click if the browser still synthesizes one.
+        suppressClick = true
+        emptyClick.current()
+      }
       invalidate()
     }
     const click = (e: MouseEvent) => {
@@ -460,7 +482,10 @@ export default function FreeFlightControls({
         e.preventDefault()
         e.stopImmediatePropagation()
         suppressClick = false
+        return
       }
+      if (e.button !== 0 || e.shiftKey || interactive(e.target)) return
+      if (!pick(e.clientX, e.clientY).hit) emptyClick.current()
     }
     const doubleClick = (e: MouseEvent) => {
       if (interactive(e.target) || suppressClick) return

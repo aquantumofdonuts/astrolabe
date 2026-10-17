@@ -33,6 +33,7 @@ type Props = {
   visit: FocusRequest | null
   onCategory: (id: string) => void
   onSelect: (id: string, keyboard?: boolean) => void
+  onDeselect: () => void
   launchingId: string | null
   onLaunch: (site: Instrument) => void
   onRemember: (site: Instrument) => void
@@ -87,6 +88,9 @@ function Scene({
     () => new Map(props.catalog.sites.map((site) => [site.id, site.image])),
     [props.catalog.sites]
   )
+  const selectedCategory = props.catalog.sites.find(
+    (site) => site.id === props.selectedId
+  )?.category
   const brightness = useMemo(
     () => new Map(props.catalog.sites.map((site) => [site.id, { value: 1 }])),
     [props.catalog.sites]
@@ -204,11 +208,13 @@ function Scene({
               color={category.color}
               paused={props.paused || props.reducedMotion}
               dimmed={
-                !!props.selectedId ||
-                (props.category !== 'all' && props.category !== category.id) ||
-                (props.category === 'all' && props.visibleIds.length !== props.catalog.sites.length)
+                props.selectedId
+                  ? selectedCategory !== category.id
+                  : (props.category !== 'all' && props.category !== category.id) ||
+                    (props.category === 'all' &&
+                      props.visibleIds.length !== props.catalog.sites.length)
               }
-              active={!props.selectedId && props.category === category.id}
+              active={selectedCategory === category.id || props.category === category.id}
             />
             {station.instruments.map((instrument, variant) => (
               <InstrumentEmphasis
@@ -262,6 +268,7 @@ function Scene({
         overview={overview}
         idleEnabled={props.idleEnabled}
         onIdleStart={props.onIdleStart}
+        onEmptyClick={props.onDeselect}
       />
     </>
   )
@@ -315,7 +322,7 @@ export default function Observatory(props: Props) {
             onCreated={({ gl }) =>
               gl.domElement.setAttribute(
                 'aria-label',
-                'Orbital observatory. Drag to orbit. Right-drag or middle-drag to pan. Scroll to zoom toward the pointer. Select an instrument or category to focus. Double-click a surface for a closer view. WASD to fly; Home to reset. All tools are also available in Directory.'
+                'Orbital observatory. Drag to orbit. Right-drag or middle-drag to pan. Scroll to zoom toward the pointer. Select an instrument or category to focus. Click empty space or press Escape to close instrument details. Double-click a surface for a closer view. WASD to fly; Home to reset. All tools are also available in Directory.'
               )
             }
           >
