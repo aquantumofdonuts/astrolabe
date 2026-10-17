@@ -2,6 +2,9 @@
 * {
   box-sizing: border-box;
 }
+html {
+  scrollbar-gutter: stable;
+}
 body {
   margin: 0;
 }
@@ -1892,6 +1895,7 @@ select {
 }
 .cinematic {
   display: block;
+  padding: 0;
   max-width: none;
   min-height: 100dvh;
 }
@@ -1976,14 +1980,25 @@ select {
   display: none;
 }
 .cinematic .main-content {
+  position: relative;
   padding: 0;
-  display: block;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
 }
 .cinematic .view-toolbar {
-  position: absolute;
-  top: 153px;
-  right: 38px;
-  margin: 0;
+  grid-area: 2 / 1;
+  position: relative;
+  align-self: start;
+  justify-self: end;
+  flex-direction: row-reverse;
+  top: auto;
+  right: auto;
+  margin: 12px 24px 0;
+  padding: 0;
+}
+.cinematic .stage {
+  grid-area: 2 / 1;
 }
 .cinematic .view-tabs {
   padding: 0;
@@ -2160,19 +2175,15 @@ select {
   display: none;
 }
 .cinematic .local-preview-banner {
+  grid-area: 1 / 1;
   position: relative;
   z-index: 26;
   margin: 0;
 }
-.cinematic.catalog-view .view-toolbar {
-  position: relative;
-  top: auto;
-  right: auto;
-  padding: 22px 38px;
-}
 .cinematic.catalog-view .stage {
   margin: 0 38px 40px;
   height: auto;
+  padding-top: 76px;
 }
 .cinematic.catalog-view .directory-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2195,6 +2206,8 @@ select {
   position: fixed;
   inset: 0;
   height: 100dvh;
+  min-height: 0;
+  max-height: none;
   z-index: 50;
 }
 .cinematic.scene-expanded .scene-canvas {
@@ -2250,9 +2263,6 @@ select {
   }
   .cinematic .sidebar-bottom {
     display: block;
-  }
-  .cinematic .view-toolbar {
-    right: 22px;
   }
   .cinematic .results-count {
     display: none;
@@ -2320,17 +2330,13 @@ select {
     display: none;
   }
   .cinematic .sidebar-bottom {
-    position: absolute;
-    right: 20px;
-    bottom: -40px;
-    z-index: 30;
+    position: static;
+    flex-basis: 100%;
+    display: flex;
+    justify-content: flex-end;
   }
-  .cinematic .view-toolbar,
-  .cinematic.catalog-view .view-toolbar {
-    position: relative;
-    top: auto;
-    right: auto;
-    padding: 8px 20px 14px;
+  .cinematic .view-toolbar {
+    margin-inline: 20px;
   }
   .cinematic .stage:not(.directory-stage) {
     min-height: 560px;
@@ -2409,14 +2415,6 @@ select {
   padding: 11px 0;
   margin: 0 0 12px;
 }
-.cinematic.world-view:has(.local-preview-banner) .view-toolbar {
-  top: 192px;
-}
-@media (max-width: 760px) {
-  .cinematic.world-view:has(.local-preview-banner) .view-toolbar {
-    top: auto;
-  }
-}
 .cinematic .view-toolbar {
   z-index: 28;
 }
@@ -2443,37 +2441,33 @@ select {
   position: sticky;
   top: 88px;
 }
-.cinematic.scene-expanded .topbar {
-  position: fixed;
-  inset: 0 0 auto;
-  z-index: 60;
+html:has(.scene-expanded) {
+  overflow: hidden;
+  scrollbar-gutter: auto;
 }
-.cinematic.scene-expanded .sidebar {
-  position: fixed;
-  top: 88px;
-  left: 0;
-  right: 0;
-  z-index: 60;
-}
-.cinematic.scene-expanded .view-toolbar {
-  position: fixed;
-  top: 153px;
-  right: 38px;
-  z-index: 60;
+.cinematic.scene-expanded
+  :is(
+    .topbar,
+    .sidebar,
+    .view-toolbar,
+    .local-preview-banner,
+    .launch-dock,
+    .mobile-scene-directory
+  ) {
+  display: none;
 }
 .cinematic.scene-expanded .inspector {
   position: fixed;
   z-index: 60;
 }
 .cinematic.scene-expanded .coordinate-nw {
-  top: 165px;
+  top: 26px;
 }
 .mobile-scene-directory {
   display: none;
 }
 @media (max-width: 1000px) {
-  .cinematic.catalog-view .sidebar,
-  .cinematic.scene-expanded .sidebar {
+  .cinematic.catalog-view .sidebar {
     top: 76px;
   }
 }
@@ -2482,20 +2476,8 @@ select {
     position: relative;
     top: auto;
   }
-  .cinematic.scene-expanded .topbar {
-    display: none;
-  }
-  .cinematic.scene-expanded .sidebar {
-    display: none;
-  }
-  .cinematic.scene-expanded .view-toolbar {
-    top: 10px;
-    left: 0;
-    right: auto;
-    padding: 0 20px;
-  }
   .cinematic.scene-expanded .coordinate-nw {
-    top: 68px;
+    top: 10px;
   }
   .cinematic .orbital-labels > .projected-label:not(.system-projected-label) {
     display: none;
@@ -2595,15 +2577,8 @@ select {
     min-height: 0;
   }
   .cinematic.world-view:not(.scene-expanded) .main-content {
-    position: relative;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr);
     flex: 1;
     min-height: 0;
-  }
-  .cinematic.world-view:not(.scene-expanded) .local-preview-banner {
-    grid-area: 1 / 1;
   }
   .cinematic.world-view:not(.scene-expanded) .stage {
     grid-area: 2 / 1;
@@ -2611,25 +2586,8 @@ select {
     min-height: 0;
     min-width: 0;
   }
-  .cinematic.world-view:not(.scene-expanded) .view-toolbar {
-    grid-area: 2 / 1;
-    position: relative;
-    align-self: start;
-    justify-self: end;
-    top: auto;
-    right: auto;
-    margin: 12px 24px 0;
-  }
-  .cinematic.catalog-view .sidebar,
-  .cinematic.scene-expanded .sidebar {
+  .cinematic.catalog-view .sidebar {
     top: 64px;
-  }
-  .cinematic.scene-expanded .view-toolbar {
-    top: 118px;
-    right: 24px;
-  }
-  .cinematic.scene-expanded .coordinate-nw {
-    top: 130px;
   }
 }
 .loading-screen .secondary-button,
@@ -3243,28 +3201,19 @@ select {
   }
 }
 .cinematic .launch-dock {
+  grid-area: 3 / 1;
   position: relative;
   z-index: 24;
   margin: 12px 24px 16px;
   padding: 10px 14px 12px;
   min-width: 0;
 }
-.cinematic.world-view:not(.scene-expanded) .main-content {
-  grid-template-rows: auto minmax(0, 1fr) auto;
-}
 .cinematic.world-view:not(.scene-expanded) .launch-dock {
   grid-area: 3 / 1;
   margin-top: 0;
 }
-.cinematic.scene-expanded .launch-dock {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 61;
-}
 .cinematic.scene-expanded .scene-controls {
-  bottom: calc(var(--launch-dock-height, 130px) + 16px);
+  bottom: max(12px, env(safe-area-inset-bottom));
 }
 .cinematic.world-view .inspector {
   bottom: calc(var(--launch-dock-height, 130px) + 66px);
@@ -3423,13 +3372,6 @@ select {
     bottom: auto;
     z-index: 16;
   }
-  .cinematic.scene-expanded .scene-controls {
-    top: 118px;
-  }
-  .cinematic.scene-expanded .scene-canvas {
-    top: 106px;
-    bottom: calc(var(--launch-dock-height, 130px) + 16px);
-  }
 }
 @media (max-width: 1200px) {
   .dock-recents {
@@ -3441,20 +3383,8 @@ select {
   }
 }
 @media (max-width: 760px) {
-  .cinematic:has(.local-preview-banner) .sidebar {
-    flex-wrap: wrap;
+  .cinematic .sidebar {
     row-gap: 0;
-  }
-  .cinematic:has(.local-preview-banner) .sidebar-bottom {
-    position: static;
-    flex-basis: 100%;
-    display: flex;
-    justify-content: flex-end;
-  }
-
-  .cinematic.scene-expanded .scene-canvas {
-    top: 56px;
-    bottom: calc(var(--launch-dock-height, 124px) + 16px);
   }
 
   .cinematic .launch-dock {
@@ -3505,9 +3435,6 @@ select {
     bottom: calc(var(--launch-dock-height, 124px) + 74px);
     z-index: 15;
   }
-  .cinematic.scene-expanded .mobile-scene-directory {
-    bottom: calc(var(--launch-dock-height, 124px) + 74px);
-  }
   .cinematic .search-popover {
     width: auto;
   }
@@ -3528,6 +3455,11 @@ select {
   }
   .cinematic.world-view.has-selection .scene-canvas {
     right: 370px;
+  }
+  .cinematic.scene-expanded.has-selection .inspector {
+    top: 76px;
+    bottom: 24px;
+    max-height: none;
   }
 }
 @media (max-width: 760px) {
@@ -3551,7 +3483,7 @@ select {
   }
   .cinematic.world-view.has-selection .scene-controls {
     position: absolute;
-    top: 8px;
+    top: 64px;
     left: 12px;
     right: auto;
     bottom: auto;
@@ -3569,16 +3501,17 @@ select {
     position: fixed;
     left: 12px;
     right: 12px;
-    bottom: calc(var(--launch-dock-height, 124px) + 16px);
+    top: auto;
+    bottom: max(12px, env(safe-area-inset-bottom));
     width: auto;
     height: 240px;
     max-height: 240px;
   }
   .cinematic.scene-expanded.has-selection .scene-canvas {
-    bottom: calc(var(--launch-dock-height, 124px) + 272px);
+    bottom: calc(264px + env(safe-area-inset-bottom));
   }
   .cinematic.scene-expanded.has-selection .scene-controls {
-    top: 60px;
+    top: 8px;
   }
 }
 @media (max-width: 760px) {
@@ -3846,15 +3779,9 @@ select {
   flex-shrink: 0;
   padding: 12px 15px;
 }
-.hector-transmission {
-  position: absolute;
-  inset: 22% 16px auto;
-}
-.hector-transmission h2 {
-  margin: 22px 0;
-}
-.hector-transmission p {
-  margin: 0 0 8px;
+.hector-overlay[data-mode='playing']:is([data-phase='loading'], [data-phase='arrival'])
+  :is(.hector-transponder, .hector-telemetry) {
+  visibility: hidden;
 }
 .hector-telemetry {
   position: absolute;

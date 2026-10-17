@@ -1,6 +1,95 @@
 import { expect, test } from '@playwright/test'
 import seed from '../public/catalog.json' with { type: 'json' }
 
+for (const preview of [false, true]) {
+  test(`view tabs keep their position on every switch at all sizes (${preview ? 'preview' : 'deployed'})`, async ({
+    page,
+  }) => {
+    test.setTimeout(60000)
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.addInitScript(
+      ({ catalog, preview }) => {
+        if (preview) localStorage.setItem('astrolabe.catalog.v1', JSON.stringify(catalog))
+        localStorage.setItem('astrolabe.economical', 'true')
+      },
+      { catalog: seed, preview }
+    )
+    for (const width of [1440, 960, 390]) {
+      await page.setViewportSize({ width, height: 900 })
+      await page.goto('/')
+      const tabs = page.locator('.view-tabs')
+      await expect(tabs).toBeVisible()
+      await page.evaluate(() => document.fonts.ready)
+      await expect(page.locator('.app-shell')).toHaveCSS('padding', '0px')
+      const before = (await tabs.boundingBox())!
+      expect(before.x + before.width).toBeGreaterThan(width - 40)
+      await page.getByRole('button', { name: 'Catalog studio', exact: true }).click({ trial: true })
+      for (const view of ['Directory', 'Astrolabe', 'Directory', 'Astrolabe']) {
+        await page.getByRole('button', { name: view, exact: true }).click()
+        const after = (await tabs.boundingBox())!
+        expect(after).toEqual(before)
+        await expect(tabs).toHaveCSS('opacity', '1')
+      }
+    }
+  })
+}
+
+test('expanded Astrolabe fills the viewport, hides surrounding UI, and restores it on exit', async ({
+  page,
+}) => {
+  test.setTimeout(60000)
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.addInitScript((catalog) => {
+    localStorage.setItem('astrolabe.catalog.v1', JSON.stringify(catalog))
+    localStorage.setItem('astrolabe.economical', 'true')
+  }, seed)
+  for (const [width, height] of [
+    [1440, 960],
+    [960, 720],
+    [390, 844],
+  ]) {
+    await page.setViewportSize({ width, height })
+    await page.goto('/')
+    if (width < 900) await page.getByRole('button', { name: 'Astrolabe', exact: true }).click()
+    await expect(page.locator('.scene-experience')).toHaveAttribute('data-scene-state', 'ready', {
+      timeout: 30000,
+    })
+    await page.getByRole('button', { name: 'Expand astrolabe', exact: true }).click()
+    for (const selector of [
+      '.topbar',
+      '.sidebar',
+      '.view-toolbar',
+      '.launch-dock',
+      '.local-preview-banner',
+      '.mobile-scene-directory',
+    ])
+      await expect(page.locator(selector)).toBeHidden()
+    await expect
+      .poll(() =>
+        page.locator('canvas').evaluate((el) => {
+          const box = el.getBoundingClientRect()
+          return { x: box.x, y: box.y, width: box.width, height: box.height }
+        })
+      )
+      .toEqual({ x: 0, y: 0, width, height })
+    await page.getByRole('button', { name: 'Reset camera', exact: true }).click({ trial: true })
+    await page
+      .getByRole('button', { name: 'Exit expanded view', exact: true })
+      .click({ trial: true })
+    await page.screenshot({ path: `/tmp/astrolabe-fullscreen-${width}.png` })
+    if (width === 960) await page.keyboard.press('Escape')
+    else await page.getByRole('button', { name: 'Exit expanded view', exact: true }).click()
+    for (const selector of [
+      '.topbar',
+      '.sidebar',
+      '.view-toolbar',
+      '.launch-dock',
+      '.local-preview-banner',
+    ])
+      await expect(page.locator(selector)).toBeVisible()
+  }
+})
+
 test('mobile preview notice, catalog editing, and the launchpad remain reachable', async ({
   page,
 }) => {

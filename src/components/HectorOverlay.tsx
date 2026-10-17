@@ -1,6 +1,11 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type CSSProperties } from 'react'
 import { Crosshair, ShieldAlert, X } from 'lucide-react'
-import type { HectorSession, HectorStatus } from '../lib/hector'
+import {
+  HECTOR_WIPE_MS,
+  HECTOR_REVEAL_MS,
+  type HectorSession,
+  type HectorStatus,
+} from '../lib/hector'
 
 export default function HectorOverlay({
   session,
@@ -31,6 +36,12 @@ export default function HectorOverlay({
       data-mode={session.mode}
       data-phase={status.phase}
       data-destroyed={status.destroyed}
+      style={
+        {
+          '--hector-wipe-duration': `${HECTOR_WIPE_MS}ms`,
+          '--hector-reveal-duration': `${HECTOR_REVEAL_MS}ms`,
+        } as CSSProperties
+      }
     >
       <div className="hector-letterbox hector-letterbox-top" aria-hidden="true" />
       <header className="hector-hud">
@@ -39,7 +50,7 @@ export default function HectorOverlay({
           <div>
             <span>UNAUTHORIZED VESSEL</span>
             <strong>CAP’N HECTOR</strong>
-            <small>Shareware enforcement division</small>
+            <small>Unscheduled orbital inspection</small>
           </div>
         </div>
         <button
@@ -53,18 +64,6 @@ export default function HectorOverlay({
           <kbd>Esc</kbd>
         </button>
       </header>
-      {(status.phase === 'loading' || status.phase === 'warning') && session.mode === 'playing' && (
-        <div className="hector-transmission">
-          <span>INCOMING TRANSMISSION</span>
-          <h2>
-            Your trial period
-            <br />
-            has expired.
-          </h2>
-          <p>Please remain perfectly still.</p>
-          <small>Resistance is… adorable.</small>
-        </div>
-      )}
       <footer className="hector-telemetry">
         <Crosshair size={20} aria-hidden="true" />
         <div>

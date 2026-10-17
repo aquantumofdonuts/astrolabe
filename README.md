@@ -237,7 +237,7 @@ The Directory offers the same tools as direct links. Opening a destination brief
 <details>
 <summary>Spoiler: an uninvited visitor</summary>
 
-With 3D available, type **`hector`** outside a text field to summon a procedural homage to [Cap’n Hector](https://evn.fandom.com/wiki/Hector) from Escape Velocity and Escape Velocity Nova. Hector announces your expired trial, swoops through the actual scene, and destroys its destinations with lasers, guided missiles, fireballs, shockwaves, and debris before departing with a barrel roll.
+With 3D available, type **`hector`** outside a text field to summon a procedural homage to [Cap’n Hector](https://evn.fandom.com/wiki/Hector) from Escape Velocity and Escape Velocity Nova. Hector flies straight into the scene without an opening transmission, destroys its destinations with lasers, guided missiles, fireballs, shockwaves, and debris, then departs with a lingering barrel roll before a slow restoration wipe.
 
 The included catalog's sequence takes about 20 seconds after the scene is ready. Larger catalogs receive simultaneous target groups, with at most twelve volleys. Normal controls are locked during the film; the always-visible **Escape / cancel** button and the Escape key begin the same restoration wipe immediately. The existing Reset camera transition restores the overview, then controls unlock. The catalog, mapped images, favorites, history, and saved view settings stay intact.
 

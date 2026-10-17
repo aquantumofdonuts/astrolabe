@@ -6,13 +6,7 @@ import type { Catalog } from '../lib/catalog'
 import type { Constellation } from '../lib/orbits'
 import { destinationRadius } from '../lib/hud'
 import { overviewPose, systemOverview } from '../lib/overview'
-import {
-  HECTOR_WARNING,
-  HECTOR_ARRIVAL,
-  HECTOR_DEPARTURE,
-  hectorPlan,
-  hectorSeed,
-} from '../lib/hector'
+import { HECTOR_ARRIVAL, HECTOR_DEPARTURE, hectorPlan, hectorSeed } from '../lib/hector'
 import type { HectorStatus } from '../lib/hector'
 import HectorShip from './HectorShip'
 
@@ -371,9 +365,8 @@ export default function HectorAttack({
     })
     const screenAt = (t: number) => {
       const first = waypoints[0] ?? new THREE.Vector2(0.3, 0.15)
-      if (t < HECTOR_WARNING) return new THREE.Vector2(-1.6, 0.7)
       if (t < plan.attackAt) {
-        const u = (t - HECTOR_WARNING) / HECTOR_ARRIVAL
+        const u = t / HECTOR_ARRIVAL
         const point = new THREE.Vector2(-1.6, 0.7).lerp(first, smooth(u))
         if (!reducedMotion) point.y += Math.sin(u * Math.PI * 3) * 0.3 * Math.sin(u * Math.PI)
         return point
@@ -457,7 +450,7 @@ export default function HectorAttack({
     camera.updateProjectionMatrix()
     camera.updateMatrixWorld()
     const position = framing.positionAt(t)
-    ship.current!.visible = t >= HECTOR_WARNING && t < plan.endAt
+    ship.current!.visible = t < plan.endAt
     ship.current!.position.copy(position)
     const direction = framing.screenAt(t + 0.025).sub(framing.screenAt(t - 0.025))
     let roll = Math.atan2(-direction.x, direction.y)
@@ -479,7 +472,7 @@ export default function HectorAttack({
       reducedMotion ? 1 : 1 - Math.exp(-Math.min(delta, 1) * 16)
     )
     ship.current!.scale.setScalar(framing.height * 0.033)
-    boost.current = t >= plan.departAt ? 1 + (t - plan.departAt) * 1.7 : 1.15
+    boost.current = t >= plan.departAt ? 1 + ((t - plan.departAt) / HECTOR_DEPARTURE) * 4.08 : 1.15
     let destroyed = 0
     for (const shot of shots) {
       const hit = t >= shot.impactAt
@@ -487,33 +480,24 @@ export default function HectorAttack({
       if (node) node.visible = !hit
       if (hit) destroyed++
     }
-    const phase =
-      t < HECTOR_WARNING
-        ? 'warning'
-        : t < plan.attackAt
-          ? 'arrival'
-          : t < plan.departAt
-            ? 'attack'
-            : 'departure'
+    const phase = t < plan.attackAt ? 'arrival' : t < plan.departAt ? 'attack' : 'departure'
     const volley = Math.max(
       0,
       Math.min(plan.batches.length - 1, Math.floor((t - plan.attackAt) / plan.beat))
     )
     const message =
-      phase === 'warning'
-        ? 'Registration compliance is not optional.'
-        : phase === 'arrival'
-          ? 'Cap’n Hector has entered the system.'
-          : phase === 'departure'
-            ? 'Thank you for evaluating Astrolabe.'
-            : destroyed === targets.length
-              ? 'Compliance achieved. Every last one.'
-              : [
-                  `Just a friendly reminder to register.`,
-                  `Your bookmarks cannot save you.`,
-                  `Resistance is… adorable.`,
-                  `This concludes your free trial.`,
-                ][volley % 4]
+      phase === 'arrival'
+        ? ''
+        : phase === 'departure'
+          ? 'Patrol complete. Hector out.'
+          : destroyed === targets.length
+            ? 'Orbital traffic cleared. Every last one.'
+            : [
+                `Clearing a little orbital traffic.`,
+                `Your bookmarks cannot save you.`,
+                `Resistance is… adorable.`,
+                `Nothing personal. Just passing through.`,
+              ][volley % 4]
     const key = `${phase}:${destroyed}:${volley}`
     if (lastStatus.current !== key) {
       lastStatus.current = key

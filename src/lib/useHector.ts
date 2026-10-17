@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Catalog } from './catalog'
-import { hectorKey, type HectorSession, type HectorStatus } from './hector'
+import {
+  hectorKey,
+  HECTOR_WIPE_MS,
+  HECTOR_REVEAL_MS,
+  type HectorSession,
+  type HectorStatus,
+} from './hector'
 
 export function useHector({
   catalog,
@@ -20,7 +26,7 @@ export function useHector({
     phase: 'loading',
     destroyed: 0,
     total: 0,
-    message: 'Intercepting an incoming transmission…',
+    message: '',
   })
   const serial = useRef(0)
   const buffer = useRef({ text: '', at: 0 })
@@ -83,7 +89,7 @@ export function useHector({
         phase: 'loading',
         destroyed: 0,
         total: catalog.sites.length,
-        message: 'Intercepting an incoming transmission…',
+        message: '',
       })
       setSession({ id: ++serial.current, catalog, mode: 'playing' })
       onStart()
@@ -112,7 +118,7 @@ export function useHector({
     const timer = window.setTimeout(() => {
       onReset()
       setSession((current) => (current ? { ...current, mode: 'reveal' } : null))
-    }, 480)
+    }, HECTOR_WIPE_MS)
     return () => window.clearTimeout(timer)
   }, [session?.mode, onReset])
   useEffect(() => {
@@ -122,7 +128,7 @@ export function useHector({
       requestAnimationFrame(() =>
         document.querySelector<HTMLElement>('.observatory-renderer')?.focus({ preventScroll: true })
       )
-    }, 850)
+    }, HECTOR_REVEAL_MS)
     return () => window.clearTimeout(timer)
   }, [session?.mode])
   useEffect(() => {

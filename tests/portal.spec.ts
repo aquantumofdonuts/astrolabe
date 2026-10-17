@@ -61,7 +61,7 @@ test('renders the 3D astrolabe, selects nodes, and resets the view without runti
   const poseBeforeExpand = await page.locator('canvas').getAttribute('data-camera-position')
   await page.getByRole('button', { name: 'Expand astrolabe', exact: true }).click()
   await expect(page.locator('.app-shell')).toHaveClass(/scene-expanded/)
-  await expect(page.getByRole('combobox', { name: 'Search instruments' })).toBeVisible()
+  await expect(page.getByRole('combobox', { name: 'Search instruments' })).toBeHidden()
   await expect(page.locator('.inspector h2')).toBeVisible()
   expect(await page.locator('canvas').getAttribute('data-camera-position')).toBe(poseBeforeExpand)
   await page.keyboard.press('Escape')

@@ -12,10 +12,13 @@ test('dock launches before the scene loads, preserves favorite order, and works 
   const gate = new Promise<void>((resolve) => {
     release = resolve
   })
-  await page.route(/\/src\/components\/Observatory\.tsx/, async (route) => {
-    await gate
-    await route.continue().catch(() => {})
-  })
+  await page.route(
+    /\/(?:src\/components\/Observatory\.tsx|assets\/Observatory-[^/]+\.js)(?:\?.*)?$/,
+    async (route) => {
+      await gate
+      await route.continue().catch(() => {})
+    }
+  )
   try {
     await page.goto('/', { waitUntil: 'domcontentloaded' })
     const dock = page.getByRole('region', { name: 'Quick launch' })

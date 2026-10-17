@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import seed from '../public/catalog.json' with { type: 'json' }
 import formats from './fixtures/thumbnail-formats.json' with { type: 'json' }
-import { hectorPlan } from '../src/lib/hector'
+import { hectorPlan, HECTOR_DEPARTURE, HECTOR_WIPE_MS, HECTOR_REVEAL_MS } from '../src/lib/hector'
 
 const logo = `data:image/png;base64,${formats.png.data}`
 const movie = (page: Page) => page.getByRole('dialog', { name: 'Captain Hector cinematic' })
@@ -56,13 +56,20 @@ async function summon(page: Page) {
       },
       { timeout: 30000 }
     )
-    .toBe('warning')
+    .toBe('arrival')
+  await expect(movie(page).locator('.hector-transponder')).toBeHidden()
+  await expect(movie(page).locator('.hector-telemetry')).toBeHidden()
+  await expect(movie(page)).not.toContainText(/trial|expired|transmission/i)
 }
 
 async function restored(page: Page) {
   await advance(page, 500)
+  await expect(movie(page)).toHaveAttribute('data-mode', 'wipe')
+  await advance(page, HECTOR_WIPE_MS - 500 + 20)
   await expect(movie(page)).toHaveAttribute('data-mode', 'reveal')
   await advance(page, 900)
+  await expect(movie(page)).toHaveAttribute('data-mode', 'reveal')
+  await advance(page, HECTOR_REVEAL_MS - 900 + 50)
   await expect(movie(page)).toHaveCount(0)
   await expect(page.locator('.app-shell')).not.toHaveAttribute('inert')
   await expect(page.locator('.app-shell')).not.toHaveClass(/scene-expanded|hector-active/)
@@ -109,6 +116,9 @@ test('Hector destroys the mapped destinations, locks interaction, and restores a
   await expect(movie(page)).toHaveAttribute('data-phase', 'departure')
   await page.screenshot({ path: '/tmp/astrolabe-hector-cleared-test.png' })
   await advance(page, 2600)
+  await expect(movie(page)).toHaveAttribute('data-phase', 'departure')
+  await expect(movie(page)).toHaveAttribute('data-mode', 'playing')
+  await advance(page, HECTOR_DEPARTURE * 1000 - 2600 + 100)
   await expect(movie(page)).toHaveAttribute('data-mode', 'wipe')
   await restored(page)
   await expect(page.locator('.orbital-node')).toHaveCount(seed.sites.length)
@@ -170,9 +180,9 @@ test('Directory can summon the cinematic on a phone and cancel before scene load
   expect(bounds.x + bounds.width).toBeLessThanOrEqual(390)
   expect(bounds.y + bounds.height).toBeLessThanOrEqual(844)
   await cancel(page).click()
-  await advance(page, 500)
+  await advance(page, HECTOR_WIPE_MS + 20)
   await expect(movie(page)).toHaveAttribute('data-mode', 'reveal')
-  await advance(page, 900)
+  await advance(page, HECTOR_REVEAL_MS + 50)
   await expect(movie(page)).toHaveCount(0)
   await expect(page.locator('.app-shell')).not.toHaveAttribute('inert')
   await page.getByRole('button', { name: 'Directory', exact: true }).click()

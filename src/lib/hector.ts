@@ -1,6 +1,6 @@
 import type { Catalog } from './catalog'
 
-export type HectorPhase = 'loading' | 'warning' | 'arrival' | 'attack' | 'departure'
+export type HectorPhase = 'loading' | 'arrival' | 'attack' | 'departure'
 export type HectorStatus = {
   phase: HectorPhase
   destroyed: number
@@ -9,9 +9,10 @@ export type HectorStatus = {
 }
 export type HectorSession = { id: number; catalog: Catalog; mode: 'playing' | 'wipe' | 'reveal' }
 
-export const HECTOR_WARNING = 2.6
 export const HECTOR_ARRIVAL = 2.2
-export const HECTOR_DEPARTURE = 2.4
+export const HECTOR_DEPARTURE = 4.2
+export const HECTOR_WIPE_MS = 900
+export const HECTOR_REVEAL_MS = 1400
 
 /** At most twelve volleys; large catalogs get simultaneous targets, never a longer movie. */
 export function hectorPlan(ids: string[]) {
@@ -21,7 +22,7 @@ export function hectorPlan(ids: string[]) {
     targets.slice(index * batchSize, (index + 1) * batchSize)
   )
   const attackDuration = batches.length ? Math.min(13.2, Math.max(5.5, batches.length * 1.3)) : 0.5
-  const attackAt = HECTOR_WARNING + HECTOR_ARRIVAL
+  const attackAt = HECTOR_ARRIVAL
   const beat = attackDuration / Math.max(1, batches.length)
   const shots = batches.flatMap((ids, volley) =>
     ids.map((id, lane) => ({

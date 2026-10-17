@@ -152,6 +152,8 @@ for (const width of [1440, 390]) {
     expect(await page.locator('canvas').getAttribute('data-camera-position')).toBe(pose)
     if (width < 761) {
       await page.getByRole('button', { name: 'Expand astrolabe', exact: true }).click()
+      await expect(link).toBeHidden()
+      await page.getByRole('button', { name: 'Exit expanded view', exact: true }).click()
       await link.click({ trial: true })
       await page.screenshot({ path: '/tmp/astrolabe-direct-launch-mobile.png' })
     }

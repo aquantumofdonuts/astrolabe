@@ -1976,12 +1976,6 @@ textarea::placeholder {
 .cinematic .view-toolbar > * {
   pointer-events: auto;
 }
-.cinematic.scene-expanded .topbar {
-  background: linear-gradient(#060d14, #060d14e6);
-}
-.cinematic.scene-expanded .sidebar {
-  background: #060d14dd;
-}
 @media (max-width: 760px) {
   .mobile-scene-directory {
     background: #0a141ee8;
@@ -2746,6 +2740,9 @@ textarea::placeholder {
   border-radius: 6px;
   letter-spacing: 0.025em;
 }
+.cinematic .view-tabs > button {
+  font-weight: 700;
+}
 .cinematic :is(.view-tabs > button, .segmented > button).active {
   background: linear-gradient(135deg, #d7f2ff, #a0cde1);
   color: #102532;
@@ -3285,7 +3282,6 @@ textarea::placeholder {
   color: #ffb27a;
 }
 .hector-transponder span,
-.hector-transmission > span,
 .hector-telemetry > div > span {
   font-size: 9px;
   font-weight: 600;
@@ -3321,27 +3317,6 @@ textarea::placeholder {
 .hector-exit kbd {
   font: inherit;
   color: #bb9c80;
-}
-.hector-transmission {
-  text-align: center;
-  text-shadow: 0 3px 22px #000;
-}
-.hector-transmission > span {
-  color: #ffb27a;
-}
-.hector-transmission h2 {
-  font-size: clamp(38px, 6vw, 78px);
-  font-weight: 800;
-  line-height: 1.06;
-  letter-spacing: -2px;
-}
-.hector-transmission p {
-  font-size: 16px;
-  color: #e3cfbd;
-}
-.hector-transmission small {
-  font-size: 12px;
-  color: #b5a28f;
 }
 .hector-telemetry {
   background: linear-gradient(transparent, #03070cea 30%, #03070cf5);
