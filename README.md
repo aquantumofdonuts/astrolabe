@@ -233,3 +233,16 @@ The Directory offers the same tools as direct links. Opening a destination brief
 **Personal view preferences on mobile**
 
 <img src="docs/screenshots/personal-view-mobile.png" alt="Mobile preferences for startup view, collection, graphics quality, ambient motion, and idle tours" width="390" />
+
+<details>
+<summary>Spoiler: an uninvited visitor</summary>
+
+With 3D available, type **`hector`** outside a text field to summon a procedural homage to [Cap’n Hector](https://evn.fandom.com/wiki/Hector) from Escape Velocity and Escape Velocity Nova. Hector announces your expired trial, swoops through the actual scene, and destroys its destinations with lasers, guided missiles, fireballs, shockwaves, and debris before departing with a barrel roll.
+
+The included catalog's sequence takes about 20 seconds after the scene is ready. Larger catalogs receive simultaneous target groups, with at most twelve volleys. Normal controls are locked during the film; the always-visible **Escape / cancel** button and the Escape key begin the same restoration wipe immediately. The existing Reset camera transition restores the overview, then controls unlock. The catalog, mapped images, favorites, history, and saved view settings stay intact.
+
+Typing in search or editors never activates it. Reduced motion removes camera shake and the barrel roll, steadies the beams and flight, and replaces the moving wipe with a fade. Leaving the tab pauses the sequence.
+
+![Captain Hector firing a laser across the mapped-logo observatory as two destinations explode, with a visible escape control](docs/screenshots/hector.png)
+
+</details>

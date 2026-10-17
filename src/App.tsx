@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   ArrowRight,
   ArrowUpRight,
@@ -45,6 +46,8 @@ import ObservatoryView from './components/ObservatoryView'
 import LaunchDock from './components/LaunchDock'
 import LaunchLink, { type LaunchFeedback } from './components/LaunchLink'
 import ViewPreferences from './components/ViewPreferences'
+import HectorOverlay from './components/HectorOverlay'
+import { useHector } from './lib/useHector'
 const FAVORITES_KEY = 'astrolabe.favorites.v1'
 const RECENTS_KEY = 'astrolabe.recents.v1'
 
@@ -139,6 +142,34 @@ export default function App() {
     setMobileDetailsOpen(false)
     setVisit(null)
   }, [])
+
+  const resetCamera = useCallback(() => setResetKey((key) => key + 1), [])
+  const startHector = useCallback(() => {
+    clearSelection()
+    setQuery('')
+    setCategory('all')
+    setCollection('all')
+    setSearchOpen(false)
+    setPreviewId(null)
+    setFeedback(null)
+    setToast('')
+    setView('astrolabe')
+    setExpanded(true)
+  }, [clearSelection])
+  const restoreAfterHector = useCallback(() => {
+    clearSelection()
+    setExpanded(false)
+    resetCamera()
+  }, [clearSelection, resetCamera])
+  const hector = useHector({
+    catalog,
+    blocked: !!(studioOpen || demo || helpOpen || mobileDetailsOpen || preferencesOpen),
+    enabled: !webglUnavailable,
+    onStart: startHector,
+    onReset: restoreAfterHector,
+  })
+  const cinematicRun = hector.session?.mode !== 'reveal' ? hector.session : null
+  const dismissHector = hector.dismiss
 
   const dismissDetails = useCallback(() => {
     clearSelection()
@@ -253,7 +284,8 @@ export default function App() {
   }, [])
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (studioOpen || demo || helpOpen || mobileDetailsOpen || preferencesOpen) return
+      if (studioOpen || demo || helpOpen || mobileDetailsOpen || preferencesOpen || hector.session)
+        return
       const input =
         event.target instanceof HTMLInputElement ||
         event.target instanceof HTMLTextAreaElement ||
@@ -278,7 +310,15 @@ export default function App() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [studioOpen, demo, helpOpen, mobileDetailsOpen, preferencesOpen, dismissDetails])
+  }, [
+    studioOpen,
+    demo,
+    helpOpen,
+    mobileDetailsOpen,
+    preferencesOpen,
+    dismissDetails,
+    hector.session,
+  ])
 
   const allMatches = useMemo(
     () => (catalog ? searchSites(catalog.sites, query, catalog.categories) : []),
@@ -382,12 +422,13 @@ export default function App() {
     setCollection('all')
   }
   const onUnavailable = useCallback(() => {
+    dismissHector()
     setWebglUnavailable(true)
     changeView('directory')
     setToast(
       '3D rendering is unavailable in this browser. All instruments are available in the directory.'
     )
-  }, [changeView])
+  }, [changeView, dismissHector])
 
   const startIdle = useCallback(() => {
     clearSelection()
@@ -420,7 +461,9 @@ export default function App() {
 
   return (
     <div
-      className={`app-shell cinematic ${view === 'astrolabe' ? 'world-view' : 'catalog-view'} ${selected ? 'has-selection' : ''} ${expanded ? 'scene-expanded' : ''}`}
+      className={`app-shell cinematic ${view === 'astrolabe' ? 'world-view' : 'catalog-view'} ${selected ? 'has-selection' : ''} ${expanded ? 'scene-expanded' : ''} ${cinematicRun ? 'hector-active' : ''}`}
+      inert={!!hector.session}
+      aria-hidden={hector.session ? true : undefined}
     >
       <a className="skip-link" href="#instruments">
         Skip to instruments
@@ -732,11 +775,11 @@ export default function App() {
             <>
               <div className="scene-canvas">
                 <ObservatoryView
-                  catalog={catalog}
+                  catalog={cinematicRun?.catalog ?? catalog}
                   visibleIds={visibleSites.map((site) => site.id)}
                   selectedId={selectedId}
                   category={category}
-                  paused={paused || searchOpen || preferencesOpen}
+                  paused={paused || searchOpen || preferencesOpen || !!cinematicRun}
                   reducedMotion={reducedMotion}
                   economical={economical}
                   resetKey={resetKey}
@@ -745,6 +788,9 @@ export default function App() {
                   onCategory={changeCategory}
                   onSelect={select}
                   onDeselect={clearSelection}
+                  hector={cinematicRun ?? undefined}
+                  onHectorStatus={hector.report}
+                  onHectorComplete={hector.reset}
                   launchingId={feedback?.id ?? null}
                   onLaunch={launch}
                   onRemember={rememberLaunch}
@@ -753,6 +799,7 @@ export default function App() {
                   onDirectory={() => changeView('directory')}
                   idleEnabled={
                     preferences.idleTour &&
+                    !hector.session &&
                     !preferencesOpen &&
                     !paused &&
                     !reducedMotion &&
@@ -831,7 +878,7 @@ export default function App() {
                   <button
                     className="icon-button"
                     onClick={() => {
-                      setResetKey((key) => key + 1)
+                      resetCamera()
                       setToast('Camera reset to overview.')
                     }}
                     aria-label="Reset camera"
@@ -1289,6 +1336,11 @@ export default function App() {
           </button>
         </div>
       )}
+      {hector.session &&
+        createPortal(
+          <HectorOverlay session={hector.session} status={hector.status} onCancel={hector.reset} />,
+          document.body
+        )}
     </div>
   )
 }

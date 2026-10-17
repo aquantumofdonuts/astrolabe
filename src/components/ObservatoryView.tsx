@@ -27,7 +27,12 @@ export default function ObservatoryView({
       <div className="scene-content" aria-busy={!ready} aria-hidden={!ready} inert={!ready}>
         {started && (
           <Suspense fallback={null}>
-            <Observatory {...props} idleEnabled={props.idleEnabled && ready} onReady={onReady} />
+            <Observatory
+              {...props}
+              sceneReady={ready}
+              idleEnabled={props.idleEnabled && ready}
+              onReady={onReady}
+            />
           </Suspense>
         )}
       </div>

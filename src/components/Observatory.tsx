@@ -1,4 +1,4 @@
-import { Component, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { Component, Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import type { ErrorInfo, ReactNode } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
@@ -19,6 +19,9 @@ import { DeepSpace, ObservatoryLighting, StellarEngine } from './OrbitalArchitec
 import { systemOverview } from '../lib/overview'
 import ConstellationField from './ConstellationField'
 import { SurfaceMaterials } from './SurfaceMaterials'
+import type { HectorSession, HectorStatus } from '../lib/hector'
+
+const HectorAttack = lazy(() => import('./HectorAttack'))
 
 type Props = {
   catalog: Catalog
@@ -42,6 +45,10 @@ type Props = {
   onReady: () => void
   idleEnabled: boolean
   onIdleStart: () => void
+  hector?: HectorSession
+  sceneReady?: boolean
+  onHectorStatus: (status: HectorStatus) => void
+  onHectorComplete: () => void
 }
 
 class SceneBoundary extends Component<
@@ -75,6 +82,7 @@ function Scene({
   hovered: React.RefObject<string | null>
 }) {
   const { camera, size, invalidate } = useThree()
+  const nodes = useRef(new Map<string, THREE.Group>())
   // Clear hover left behind by a camera flight, and refresh shaders even while paused.
   useEffect(() => {
     hovered.current = null
@@ -140,6 +148,10 @@ function Scene({
     for (const anchor of anchors) {
       const label = labels.current.get(anchor.id)
       if (!label) continue
+      if (props.hector) {
+        label.style.visibility = 'hidden'
+        continue
+      }
       point.set(...anchor.position).project(camera)
       let x = ((point.x + 1) * size.width) / 2,
         y = ((1 - point.y) * size.height) / 2
@@ -201,57 +213,67 @@ function Scene({
         const category = props.catalog.categories.find((cat) => cat.id === station.categoryId)!
         return (
           <group key={category.id}>
-            <ConstellationField
-              station={station}
-              catalog={props.catalog}
-              family={family}
-              color={category.color}
-              paused={props.paused || props.reducedMotion}
-              dimmed={
-                props.selectedId
-                  ? selectedCategory !== category.id
-                  : (props.category !== 'all' && props.category !== category.id) ||
-                    (props.category === 'all' &&
-                      props.visibleIds.length !== props.catalog.sites.length)
-              }
-              active={selectedCategory === category.id || props.category === category.id}
-            />
+            {!props.hector && (
+              <ConstellationField
+                station={station}
+                catalog={props.catalog}
+                family={family}
+                color={category.color}
+                paused={props.paused || props.reducedMotion}
+                dimmed={
+                  props.selectedId
+                    ? selectedCategory !== category.id
+                    : (props.category !== 'all' && props.category !== category.id) ||
+                      (props.category === 'all' &&
+                        props.visibleIds.length !== props.catalog.sites.length)
+                }
+                active={selectedCategory === category.id || props.category === category.id}
+              />
+            )}
             {station.instruments.map((instrument, variant) => (
-              <InstrumentEmphasis
-                key={`${instrument.id}:${family}:${variant}:${!!images.get(instrument.id)}`}
-                brightness={brightness.get(instrument.id)!}
+              <group
+                key={instrument.id}
+                ref={(node) => {
+                  if (node) nodes.current.set(instrument.id, node)
+                  else nodes.current.delete(instrument.id)
+                }}
               >
-                <group position={instrument.position}>
-                  <DestinationGlow
+                <InstrumentEmphasis
+                  key={`${instrument.id}:${family}:${variant}:${!!images.get(instrument.id)}`}
+                  brightness={brightness.get(instrument.id)!}
+                >
+                  <group position={instrument.position}>
+                    <DestinationGlow
+                      color={category.color}
+                      radius={
+                        destinationRadius(family, variant, !!images.get(instrument.id)) *
+                        instrument.scale
+                      }
+                      active={
+                        props.selectedId
+                          ? props.selectedId === instrument.id
+                          : props.category === category.id
+                      }
+                      paused={props.paused || props.reducedMotion}
+                      seed={family * 2.7 + variant * 1.9}
+                    />
+                  </group>
+                  <CelestialDestination
+                    key={instrument.id}
+                    onSelect={() => props.onSelect(instrument.id)}
+                    id={instrument.id}
+                    image={images.get(instrument.id)}
+                    position={instrument.position}
+                    rotation={instrument.rotation}
+                    scale={instrument.scale}
+                    family={family}
+                    variant={variant}
                     color={category.color}
-                    radius={
-                      destinationRadius(family, variant, !!images.get(instrument.id)) *
-                      instrument.scale
-                    }
-                    active={
-                      props.selectedId
-                        ? props.selectedId === instrument.id
-                        : props.category === category.id
-                    }
+                    hovered={hovered}
                     paused={props.paused || props.reducedMotion}
-                    seed={family * 2.7 + variant * 1.9}
                   />
-                </group>
-                <CelestialDestination
-                  key={instrument.id}
-                  onSelect={() => props.onSelect(instrument.id)}
-                  id={instrument.id}
-                  image={images.get(instrument.id)}
-                  position={instrument.position}
-                  rotation={instrument.rotation}
-                  scale={instrument.scale}
-                  family={family}
-                  variant={variant}
-                  color={category.color}
-                  hovered={hovered}
-                  paused={props.paused || props.reducedMotion}
-                />
-              </InstrumentEmphasis>
+                </InstrumentEmphasis>
+              </group>
             ))}
           </group>
         )
@@ -269,7 +291,23 @@ function Scene({
         idleEnabled={props.idleEnabled}
         onIdleStart={props.onIdleStart}
         onEmptyClick={props.onDeselect}
+        cinematic={!!props.hector}
       />
+      {props.hector && (
+        <Suspense fallback={null}>
+          <HectorAttack
+            key={props.hector.id}
+            catalog={props.catalog}
+            stations={stations}
+            nodes={nodes}
+            ready={!!props.sceneReady}
+            running={props.hector.mode === 'playing'}
+            reducedMotion={props.reducedMotion}
+            onStatus={props.onHectorStatus}
+            onComplete={props.onHectorComplete}
+          />
+        </Suspense>
+      )}
     </>
   )
 }
@@ -309,7 +347,9 @@ export default function Observatory(props: Props) {
         >
           <Canvas
             shadows={!props.economical}
-            frameloop={props.paused || props.reducedMotion ? 'demand' : 'always'}
+            frameloop={
+              props.hector ? 'always' : props.paused || props.reducedMotion ? 'demand' : 'always'
+            }
             camera={{ position: [0, 0.3, HOME_DISTANCE], fov: 42 }}
             dpr={props.economical ? 1 : [1, 1.5]}
             gl={{

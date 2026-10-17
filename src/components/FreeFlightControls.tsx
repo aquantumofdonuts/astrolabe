@@ -71,6 +71,7 @@ type Props = {
   idleEnabled: boolean
   onIdleStart: () => void
   onEmptyClick: () => void
+  cinematic?: boolean
 }
 
 export default function FreeFlightControls({
@@ -86,6 +87,7 @@ export default function FreeFlightControls({
   idleEnabled,
   onIdleStart,
   onEmptyClick,
+  cinematic = false,
 }: Props) {
   const { camera, gl, invalidate, scene, size } = useThree()
   const flight = useMemo(() => new FlightController(radius), [radius])
@@ -266,7 +268,7 @@ export default function FreeFlightControls({
   useEffect(() => {
     const element = host.current
     const stage = element?.closest('.stage')
-    if (!element || !stage) return
+    if (!element || !stage || cinematic) return
     const raycaster = new Raycaster()
     type Pointer = { x: number; y: number; startX: number; startY: number; pan: boolean }
     const pointers = new Map<number, Pointer>()
@@ -574,9 +576,17 @@ export default function FreeFlightControls({
       window.removeEventListener('blur', clear)
       document.removeEventListener('visibilitychange', visibility)
     }
-  }, [camera, flight, host, gl, scene, homeDistance, reducedMotion, invalidate])
+  }, [camera, flight, host, gl, scene, homeDistance, reducedMotion, invalidate, cinematic])
 
   useFrame((_, delta) => {
+    if (cinematic) {
+      // Keep the controller at the cinematic pose so its usual Reset transition
+      // can take over smoothly when the wipe reveals the normal observatory.
+      flight.position.copy(camera.position)
+      flight.orientation.copy(camera.quaternion)
+      flight.stop()
+      return
+    }
     const tour = idle.current
     if (tour) {
       const elapsed = Math.max(0, (performance.now() - tour.startedAt) / 1000)

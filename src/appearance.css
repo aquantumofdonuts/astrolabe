@@ -3268,3 +3268,154 @@ textarea::placeholder {
 .cinematic .directory-card:focus-within {
   border-color: var(--accent, #95d7e8);
 }
+/* Hidden Captain Hector cinematic. */
+.hector-overlay {
+  color: #e9e3da;
+  background: radial-gradient(ellipse at center, transparent 35%, #02070c80 100%);
+  font-family: 'Manrope Variable', sans-serif;
+}
+.hector-letterbox-top {
+  background: linear-gradient(#03070cf5, #03070cd9 70%, transparent);
+}
+.hector-hud,
+.hector-telemetry {
+  text-transform: uppercase;
+}
+.hector-transponder {
+  color: #ffb27a;
+}
+.hector-transponder span,
+.hector-transmission > span,
+.hector-telemetry > div > span {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 2.2px;
+}
+.hector-transponder strong {
+  font-size: 24px;
+  font-weight: 850;
+  letter-spacing: 3px;
+}
+.hector-transponder small {
+  color: #b4a99c;
+  font-size: 9px;
+  letter-spacing: 1.5px;
+}
+.hector-exit {
+  border: 1px solid #a27b57;
+  border-radius: 7px;
+  background: #08111ce8;
+  color: #ffe6c9;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.hector-exit:hover {
+  background: #493021;
+  border-color: #ffd3a2;
+}
+.hector-exit:focus-visible {
+  outline: 2px solid #ffd3a2;
+  outline-offset: 4px;
+}
+.hector-exit kbd {
+  font: inherit;
+  color: #bb9c80;
+}
+.hector-transmission {
+  text-align: center;
+  text-shadow: 0 3px 22px #000;
+}
+.hector-transmission > span {
+  color: #ffb27a;
+}
+.hector-transmission h2 {
+  font-size: clamp(38px, 6vw, 78px);
+  font-weight: 800;
+  line-height: 1.06;
+  letter-spacing: -2px;
+}
+.hector-transmission p {
+  font-size: 16px;
+  color: #e3cfbd;
+}
+.hector-transmission small {
+  font-size: 12px;
+  color: #b5a28f;
+}
+.hector-telemetry {
+  background: linear-gradient(transparent, #03070cea 30%, #03070cf5);
+  color: #ffb27a;
+}
+.hector-telemetry p {
+  font-size: clamp(11px, 1.2vw, 15px);
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: #f4dcc4;
+}
+.hector-tally strong {
+  font-variant-numeric: tabular-nums;
+  font-size: 25px;
+  letter-spacing: 2px;
+}
+.hector-tally strong span {
+  color: #9e8e7f;
+  font-size: 17px;
+}
+.hector-tally small {
+  font-size: 8px;
+  letter-spacing: 1.5px;
+  color: #b5a28f;
+}
+.hector-tally progress {
+  accent-color: #f5a36e;
+  background: #463529;
+  border: 0;
+  border-radius: 2px;
+}
+.hector-tally progress::-webkit-progress-bar {
+  background: #463529;
+}
+.hector-tally progress::-webkit-progress-value {
+  background: #f5a36e;
+}
+.hector-wipe {
+  background: linear-gradient(105deg, #050b12 45%, #152536 85%, #b27843 100%);
+  box-shadow: 15px 0 80px #ffb56650;
+  text-align: center;
+}
+.hector-wipe span {
+  color: #bda78e;
+  font-size: 10px;
+  letter-spacing: 3px;
+}
+.hector-wipe strong {
+  color: #f3d1aa;
+  font-size: clamp(16px, 3vw, 28px);
+  letter-spacing: 3px;
+}
+.hector-wipe i {
+  background: #edb87d;
+  box-shadow: 0 0 20px #ffb55c;
+}
+.cinematic.hector-active .stage {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+@media (max-width: 600px) {
+  .hector-transponder strong {
+    font-size: 17px;
+    letter-spacing: 1.2px;
+  }
+  .hector-transponder span {
+    font-size: 7px;
+    letter-spacing: 1px;
+  }
+  .hector-exit {
+    font-size: 10px;
+  }
+  .hector-tally strong {
+    font-size: 19px;
+  }
+}

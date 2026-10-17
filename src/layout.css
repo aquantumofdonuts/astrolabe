@@ -3769,3 +3769,161 @@ select {
   display: grid;
   place-items: center;
 }
+/* The film takes over the existing scene, while its only live control stays outside the inert app. */
+.cinematic.hector-active .stage:not(.directory-stage) {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  width: 100vw;
+  height: 100dvh;
+  min-height: 0;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+}
+.cinematic.hector-active .stage .scene-canvas,
+.cinematic.hector-active .stage .observatory-renderer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+.hector-active .topbar,
+.hector-active .sidebar,
+.hector-active .view-toolbar,
+.hector-active .launch-dock,
+.hector-active .scene-controls,
+.hector-active .orbital-labels,
+.hector-active .mobile-scene-directory,
+.hector-active .astrolabe-legend,
+.hector-active .scene-empty,
+.hector-active .local-preview-banner,
+.hector-active .toast {
+  visibility: hidden;
+}
+.hector-active .scene-loading {
+  visibility: hidden;
+}
+.hector-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  overflow: hidden;
+  touch-action: none;
+  overscroll-behavior: contain;
+}
+.hector-letterbox-top {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 110px;
+  pointer-events: none;
+}
+.hector-hud {
+  position: absolute;
+  inset: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 23px 30px;
+}
+.hector-transponder {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+.hector-transponder > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.hector-exit {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  padding: 12px 15px;
+}
+.hector-transmission {
+  position: absolute;
+  inset: 22% 16px auto;
+}
+.hector-transmission h2 {
+  margin: 22px 0;
+}
+.hector-transmission p {
+  margin: 0 0 8px;
+}
+.hector-telemetry {
+  position: absolute;
+  inset: auto 0 0;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 18px;
+  padding: 40px 30px 28px;
+}
+.hector-telemetry p {
+  margin: 8px 0 0;
+}
+.hector-tally {
+  display: grid;
+  gap: 4px;
+  min-width: 160px;
+}
+.hector-tally progress {
+  width: 100%;
+  height: 3px;
+  margin-top: 4px;
+}
+.hector-wipe {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  pointer-events: none;
+}
+.hector-wipe i {
+  width: 80px;
+  height: 2px;
+  margin-top: 12px;
+}
+.hector-hud {
+  z-index: 3;
+}
+@media (max-width: 600px) {
+  .hector-hud {
+    padding: 16px;
+    gap: 8px;
+  }
+  .hector-transponder {
+    gap: 8px;
+  }
+  .hector-transponder > svg {
+    width: 18px;
+  }
+  .hector-transponder small,
+  .hector-exit kbd {
+    display: none;
+  }
+  .hector-exit {
+    padding: 10px;
+    gap: 6px;
+  }
+  .hector-telemetry {
+    grid-template-columns: auto 1fr;
+    gap: 10px;
+    padding: 30px 18px 18px;
+  }
+  .hector-tally {
+    grid-column: 2;
+    min-width: 0;
+    width: 165px;
+  }
+}
